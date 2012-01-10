@@ -18,7 +18,7 @@ static int getbyhandle(int handle)
 		if(file_handles[i].inode == handle)
 			return i;
 }
-static fs_node_t *getnodebyhandle(int handle)
+fs_node_t *getnodebyhandle(int handle)
 {
 	//Search for the specific inode
 	return &file_handles[getbyhandle(handle)];

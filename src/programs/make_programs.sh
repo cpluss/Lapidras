@@ -9,6 +9,6 @@ done
 
 #make the initrd
 cd bin
-./initrd_ins initrd *.bin test.txt
+./initrd_ins initrd *
 cd ..
 mv bin/initrd ./

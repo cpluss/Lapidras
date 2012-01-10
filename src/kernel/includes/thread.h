@@ -17,7 +17,8 @@
 typedef struct thread
 {
 	uint id;			//Thread id	
-	uint esp;			//Ring 0 stack
+	uint esp;			//stack
+	uint esp0;			//Ring 0 stack
 	uint esp_loc;		//Base location of the stack
 	uint user_esp;		//User stack
 	

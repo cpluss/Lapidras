@@ -33,4 +33,6 @@ typedef struct initrd_mfile
 //and returns a complete filesystem node
 fs_node_t *init_initrd(uint location);
 int setup_initrd(multiboot_t *multiboot);
+
+byte *initrd_get_content_offset(fs_node_t *node);
 #endif 

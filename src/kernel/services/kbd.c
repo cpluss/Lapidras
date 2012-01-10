@@ -176,7 +176,7 @@ void enable_kbd()
 void kbd_get_string(char *b)
 {
 	set_backspace_point(); //Prevent the user of erasing last message
-	
+
 	//Begin to listen
 	begin_listen(b);
 	//Go into the waiting state.
@@ -227,7 +227,7 @@ static void kbd_handler(registers_t *regs)
 		c -= 0x20;
 	if(alt)
 		c = second_map[scancode];
-	kputc(c);
+	kputc_v(current_visible_console, c);
 	notify_event(EVENT_KBD_CHAR, (void*)&c);
 	
 	if(listeners->length > 0)
@@ -235,6 +235,7 @@ static void kbd_handler(registers_t *regs)
 		foreach(item, listeners)
 		{
 			kbd_listener_t *l = (kbd_listener_t*)item->value;
+			
 			//all other printable characters is above space ( 0x20 )
 			if(c == 0x08 || c >= 0x20)
 			{

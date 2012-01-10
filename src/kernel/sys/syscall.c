@@ -5,10 +5,10 @@
 //The syscall handler
 void syscall_handler(registers_t *regs);
 
-#define NUM_SYSCALLS 20
+#define NUM_SYSCALLS 21
 //All available syscalls right now
 uint num_syscalls = NUM_SYSCALLS;
-static void *syscalls[NUM_SYSCALLS] =
+static void *syscalls[] =
 {
 	//Printing operations
 	&kputs,					//kputs - prints a string to the screen
@@ -41,7 +41,9 @@ static void *syscalls[NUM_SYSCALLS] =
 	
 	&WaitForSignal,
 	&LatestSignal,
-	&GetThread
+	&GetThread,
+	
+	&kbd_get_string
 };
 
 void init_syscalls()
@@ -69,7 +71,9 @@ void syscall_handler(registers_t *regs)
 		push %3; \
 		push %4; \
 		push %5; \
+		sti; \
 		call *%6; \
+		cli; \
 		pop %%ebx; \
 		pop %%ebx; \
 		pop %%ebx; \

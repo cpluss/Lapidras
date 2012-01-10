@@ -23,6 +23,11 @@ int setup_initrd(multiboot_t *multiboot)
 	return 0;
 }
 
+byte *initrd_get_content_offset(fs_node_t *node)
+{
+	initrd_header_t header = file_headers[node->inode];
+	return (byte*)(header.f_offset + sizeof(initrd_mfile_t));
+}
 //function we read the initrd from
 static uint initrd_read(fs_node_t *node, uint offset, uint size, byte *buffer)
 {

@@ -1,0 +1,11 @@
+Lapidras is a home-brew OS made by Sebastian Lund.
+It is mainly programmed by learning purposes, and a bit of fun as well.
+
+No copyright whatsoever here...
+
+Current support is multithreading covering up to different priorities.
+	0	- 	Here runs the GUI threads, as well as any other critical threads
+	1	-	Here runs the text-ui threads, as well as any other thread waiting for user input
+	2	-	Regular applications run here, and share equally of the processor user preemptive switching
+	
+I really don't want to write all this, as I cba to do so..

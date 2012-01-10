@@ -53,6 +53,8 @@ int main(int argc, char *argv[])
 	for(i = 0; i < nfiles; i++)
 	{
 		strcpy(current_file, argv[i + 2]);
+		if(strcmp(current_file, argv[0]) == 0)
+			continue;
 		printf("writing %s -> %s at 0x%x\n", outfile, current_file, f_offset_begin);
 		
 		headers[i].magic = inf_header.magic;

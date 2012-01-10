@@ -15,6 +15,8 @@
 #include "version.h"
 #include "event.h"
 #include "cio.h"
+#include "string.h"
+#include "initrd.h"
 
 //cpuid parameter definitions
 #define CPUID_VENDOR		0x00

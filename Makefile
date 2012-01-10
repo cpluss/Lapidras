@@ -27,7 +27,7 @@ CPUBITSs = $(patsubst %.asm,%.o,$(wildcard src/kernel/cpu/*.asm))
 OBJ_FILES_f = $(GEN) $(DATASTRUCTURES) $(SERVICES) $(FILESYSTEMS) $(VIDEODRIVERS) $(VIRTUALMEM) $(MISCMODS) $(SYSTEM) $(CPUBITS) $(FILESYSTEMSs) $(VIDEODRIVERSs) $(VIRTUALMEMs) $(GENs) $(MISCMODSs) $(SYSTEMs) $(CPUBITSs)
 OBJ_FILES = $(patsubst src/kernel/%,bin/obj/%,$(OBJ_FILES_f))
 
-.PHONY: all clean test programs directories
+.PHONY: all clean test programs directories test_hdd
 
 all: bin/kernel.bin
 
@@ -50,6 +50,9 @@ programs:
 test:
 	@sh ./scripts/create_cd.sh
 	@sh ./scripts/test_cd
+test_hdd:
+	@sh ./scripts/create_floppy.sh
+	@sh ./scripts/test_floppy
 	
 #@sh ./scripts/create_floppy.sh
 #@./scripts/test_floppy

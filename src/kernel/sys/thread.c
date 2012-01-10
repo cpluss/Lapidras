@@ -44,7 +44,8 @@ void start_multithreading(uint esp)
 	current_thread->priority = 0;
 	current_thread->state = RUNNABLE;
 	current_thread->id = next_pid++;
-	current_thread->esp_loc = esp + 1;
+	current_thread->esp_loc = esp;
+	current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	current_thread->page_directory = current_directory;
 	current_thread->console = current_console;
 	current_thread->signal_queue = list_create();
@@ -65,6 +66,7 @@ thread_t *CreateThread(const char *name, uint eip, uint priority, uint state)
 	new->eip = eip;
 	new->esp_loc = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->esp = new->esp_loc;
+	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	
 	new->page_directory = clone_directory(current_directory);
 	
@@ -188,6 +190,7 @@ int fork()
 	new->state = RUNNABLE;
 	new->console = current_thread->console;
 	new->esp_loc = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->page_directory = dir;
 	new->signal_queue = list_copy(current_thread->signal_queue);
 	
@@ -342,6 +345,7 @@ void free_dead_threads()
 		if(th)
 		{
 			free((void*)(th->esp_loc - KERNEL_STACK_SIZE));
+			free((void*)(th->esp0 - KERNEL_STACK_SIZE));
 			free(th->page_directory);
 			
 			list_destroy(th->signal_queue);
@@ -406,7 +410,10 @@ void _switch(thread_t *new)
 	ebp = current_thread->ebp;
 	eip = current_thread->eip;
 	
+	//set_console(current_thread->console, 0);
+	
 	notify_event(EVENT_THREAD_SWITCH, (void*)current_thread);
+	set_kernel_stack(current_thread->esp0);
 	
 	//perform the jump
 	asm volatile(

@@ -196,6 +196,7 @@ void kbd_handle_read(void *param)
 
 void kread(char *buffer)
 {
-	buf = buffer;
+	int a;
+	asm volatile("int $112" : "=a"(a) : "0"(20), "b"((int)buffer));
 }
 

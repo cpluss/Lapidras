@@ -33,14 +33,18 @@ void unregister_event(ushort type, evt_t handler)
 	}
 }
 
+extern virtual_console_t *current_visible_console;
 void notify_event(ushort type, void *param)
 {
 #if 0
-	kputc('[');
-	ksetforeground(C_GREEN);
-	kprint("events");
-	ksetdefaultcolor();
-	kprint("]:%x raised\n");
+	if(type == EVENT_KBD_CHAR)
+	{
+		kputc_v(current_visible_console, '[');
+		ksetforeground(C_GREEN);
+		kprint_v(current_visible_console, "events");
+		ksetdefaultcolor();
+		kprint_v(current_visible_console, "]:%x raised\n", type);
+	}
 #endif
 	foreach(item, events)
 	{

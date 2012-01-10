@@ -16,6 +16,8 @@ int strchr(char *s, char c);
 void strrev(char *dest, char *source);
 int atoi(char *str);
 
+char *strtok_r(char *str, const char *delim, char **saveptr);
+
 //combine strings
 int sprintf(char *s, char *format, ...);
 

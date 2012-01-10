@@ -121,14 +121,14 @@ void init_paging()
     
     //identity map!
     i = 0;
-    while(i < placement_address)
+    while(i < placement_address + 0x3000)
     {
 		alloc_frame(get_page(i, 1, kernel_directory), 0, 0); //kernel-mode
 		i += 0x1000;
     }
     
     for(i = KHEAP_START; i < (KHEAP_START + KHEAP_SIZE); i += 0x1000)
-		alloc_frame(get_page(i, 1, kernel_directory), 0, 1); //kernel-mode, rw
+		alloc_frame(get_page(i, 1, kernel_directory), 0, 0);//1); //kernel-mode, rw
     
     //register page fault handler
     register_interrupt_handler(14, &page_fault);
@@ -138,6 +138,9 @@ void init_paging()
     
     //create the current heap, for our memory handler
     kheap = create_heap(KHEAP_START, KHEAP_SIZE);
+    
+    current_directory = clone_directory(kernel_directory);
+    switch_page_directory(current_directory);
 }
 
 void switch_page_directory(page_directory_t *dir)

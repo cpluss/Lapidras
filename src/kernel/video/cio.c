@@ -108,7 +108,7 @@ void set_console(virtual_console_t *console, uint takeover)
 	//save the last console
 	asm volatile("cli");
 	//Copy current contents
-	if(takeover && current_visible_console != 0)
+	if(takeover && current_console->old_console_buffer != (char*)VIDMEM_BUFFER)
 	{
 		//Copy the buffer to the visible layer
 		memcpy(current_visible_console->old_console_buffer, (char*)VIDMEM_BUFFER, CONSOLE_BUFFER_SIZE);
@@ -406,6 +406,7 @@ void init_video_console()
 	video_console = (virtual_console_t*)kmalloc(sizeof(virtual_console_t));
 	memset((char*)video_console, 0, sizeof(virtual_console_t));
 	video_console->console_buffer = (char*)VIDMEM_BUFFER;
+	video_console->old_console_buffer = (char*)VIDMEM_BUFFER;
 	current_console = video_console;
 	current_visible_console = video_console;
 }

@@ -4,6 +4,7 @@
 #include "thread.h"
 
 extern page_directory_t *current_directory;
+typedef void (*call_t)(uint, char**);
 #define UCODE_START 0x400000
 
 int exec(const char *path, int argc, char **argv)
@@ -18,6 +19,9 @@ int exec(const char *path, int argc, char **argv)
     
     byte *buffer = (byte*)alloc(n);
     fread(buffer, n, 1, handle);
+    
+    //TODO: Add support for ELF files
+    
     fclose(handle);
     
     asm volatile("cli");
@@ -36,12 +40,31 @@ int exec(const char *path, int argc, char **argv)
 	//copy the entire program using a very slow method. Not a large file I sincerely hope.
 	memcpy((void*)ptr, buffer, n); 
 	
-	//call the launcher
+	call_t caller = (call_t)ptr;
 	asm volatile("sti");
-	launch_program(ptr, get_x(), get_y()); //pass the x & y coordinates to properly print to the screen.
+	caller(argc, argv);
 	
 	//clear the memory
 	memset((void*)ptr, 0, n);
+	free(buffer);
 	
 	return 1;
+}
+
+int system(const char *path, int argc, char **argv)
+{
+	int ret = fork();
+	if(ret == 0)
+	{
+		exec(path, argc, argv);
+		exit();
+	}
+	else
+	{
+		volatile thread_t *child = GetThread(ret);
+		if(!child)
+			return -1;
+		while(child->state != DEAD) wait(10);
+		return 1;
+	}
 }

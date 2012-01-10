@@ -1,7 +1,7 @@
 #include "system.h"
 #include "thread.h"
 
-void test_tty();
+extern void shell();
 int kmain(multiboot_t *multiboot, uint esp)
 {
     //setup the screen
@@ -44,105 +44,9 @@ int kmain(multiboot_t *multiboot, uint esp)
     //Initialize the threading
     start_multithreading(esp);
     
-    CreateThread("shell", (uint)test_tty, 2, RUNNABLE);
+    CreateThread("shell", (uint)shell, 2, RUNNABLE);
     
     exit();
     
     return 0;
-}
-
-extern fs_node_t *ramfs_root;
-void test_tty()
-{	
-	kprint("Experimental shell %s\n", CurrentThread()->name);
-	
-	char *in_cmd = (char*)alloc(128);
-	char *working_directory = (char*)alloc(64);
-	working_directory = "/";
-	
-	for(;;)
-	{
-		kprint("%s> ", working_directory);
-		memset(in_cmd, 0, 128);
-		kbd_get_string(in_cmd);
-		char *cmd = in_cmd;
-		
-		if(strcmp(cmd, "proc"))
-		{
-			//List all running processes
-			int i = 0;
-			thread_t *th;
-			kprint("----------------------------------------------------------------\n");
-			kprint("There are %i threads running.\n", get_thread_count());
-			kprint("name\t\tpid\t\tpriority\t\tstate\n");
-			kprint("----------------------------------------------------------------\n");
-			int n = 0;
-			while(n != get_thread_count())
-			{
-				char *states[5] = { "DEAD", "RUNNABLE", "WAITING", "SLEEPING" };
-				if((th = GetThread(i)) != 0)
-				{
-					kprint("%s\t\t%i\t\t%i\t\t\t%s\n", th->name, th->id, th->priority, states[th->state]);
-					n++;
-				}
-				i++;
-				if(i >= 100)
-					break;
-			}
-			kprint("----------------------------------------------------------------\n");
-		}
-		else if(strcmp(cmd, "clear"))
-			clear_screen();
-		else if(strcmp(cmd, "dir"))
-		{
-			int i = 0;
-			struct dirent *node = 0;
-			for(i = 0; (node = readdir_fs(ramfs_root, i)) != 0; i++)
-			{
-				fs_node_t *fsnode = finddir_fs(ramfs_root, node->name);
-				if((fsnode->flags & 0x7) == FS_DIRECTORY)
-					ksetforeground(C_GREEN);
-				
-				kprint("%s ", node->name);
-				ksetdefaultcolor();
-				if(i > 10)
-					break;
-			}
-			
-			kputc('\n');
-		}
-		else if(strcmp(cmd, "test"))
-		{
-			int ret = fork();
-			kprint("fork() returned %i\n", ret);
-			if(ret == 0)
-				exit();
-		}
-		else
-		{
-			if(finddir_fs(ramfs_root, cmd) == 0)
-				kprint("No such file or directory.\n");
-			else
-			{
-				char ext[5];
-				memcpy(ext, (char*)((uint)cmd + strlen(cmd) - 5), 4);
-				ext[5] = 0;
-				if(ext[0] == '.' && ext[1] == 'b' && ext[2] == 'i' && ext[3] == 'n')
-				{
-					int ret = fork();
-					if(ret == 0) //the child
-					{
-						exec(cmd, 0, 0);
-						exit();
-					}
-					volatile thread_t *child = GetThread(ret);
-					while(child->state != DEAD) wait(10);
-				}
-				else
-					kprint("%s is not a executable.\n", cmd);
-			}
-		}
-	}
-	
-	for(;;); //Just in case
 }

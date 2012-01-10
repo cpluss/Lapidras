@@ -159,3 +159,73 @@ int sprintf(char *s, char *format, ...)
 
 	return 1;
 }
+
+//Tagna från klange - github repository
+uint strspn(const char * str, const char * accept) 
+{
+	const char * ptr;
+	const char * acc;
+	uint size = 0;
+	for (ptr = str; *ptr != '\0'; ++ptr) 
+	{
+		for (acc = accept; *acc != '\0'; ++acc) 
+		{
+			if (*ptr == *acc) 
+			{
+				break;
+			}
+		}
+		if (*acc == '\0') 
+		{
+			return size;
+		} 
+		else 
+		{
+			++size;
+		}
+	}
+	return size;
+}
+char *strpbrk(const char *str, const char *accept)
+{
+	while(*str != '\0')
+	{
+		const char *acc = accept;
+		while(*acc != '\0')
+		{
+			if(*acc++ == *str)
+				return (char*)str;
+		}
+		str++;
+	}
+	return 0;
+}
+uint lfind(const char *str, const char accept)
+{
+	uint i = 0;
+	while(str[i] != accept)
+		i++;
+	return (uint)str + i;
+}
+char *strtok_r(char *str, const char *delim, char **saveptr)
+{
+	char *token;
+	if(str == 0L)
+		str = *saveptr;
+	str += strspn(str, delim);
+	if(*str == '\0')
+	{
+		*saveptr = str;
+		return 0;
+	}
+	token = str;
+	str = strpbrk(token, delim);
+	if(str == 0)
+		*saveptr = (char*)lfind(token, '\0');
+	else
+	{
+		*str = '\0';
+		*saveptr = str + 1;
+	}
+	return token;
+}

@@ -1,19 +1,11 @@
 #include "system.h"
 
-void test(void *p)
+void main(int argc, char *argv[])
 {
-	char c = *(char*)p;
-	kprint("Character '%c' caught.\n", c);
-}
-int pmain()
-{
-	/*char *name = (char*)kmalloc(256);
-	kprint("Enter your name: ");
-	kread(name);
-	kprint("Hello %s, have a nice day!\n", name);
-	kfree(name);*/
-	kprint("Registering.\n");
-	register_event(EVENT_KBD_CHAR, &test);
-	for(;;);
-	return 0;
+	kprint("Enter string: ");
+	char *buf = (char*)kmalloc(64);
+	kread(buf);
+	kprint("You wrote '%s'\n", buf);
+	kfree(buf);
+	return;
 }

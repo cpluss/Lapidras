@@ -1,20 +1,8 @@
 #include "system.h"
 
-int pmain()
+void main(int argc, char *argv[])
 {
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
-	kprint("Hellothree -> That's me!\n");
+	kprint("Hellothree, that's me!\n");
 	
-	return 0;
+	return;
 }
