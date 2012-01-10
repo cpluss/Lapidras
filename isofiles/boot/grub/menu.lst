@@ -1,0 +1,4 @@
+default 0
+title Lapidras
+kernel /boot/kernel.bin
+module /initrd

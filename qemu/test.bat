@@ -1,0 +1,1 @@
+qemu.exe -L .\ -M pc -m 64 -std-vga -soundhw pcspk -cdrom simpleos.iso -m 32

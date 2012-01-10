@@ -1,0 +1,5 @@
+megs: 32
+#ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0
+ata0-master: type=disk, path=/dev/loop1, cylinders=372, heads=11, spt=8
+boot: disk, cdrom, floppy
+clock: sync=realtime

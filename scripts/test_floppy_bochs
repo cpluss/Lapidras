@@ -1,0 +1,5 @@
+#!/bin/bash
+
+sudo losetup /dev/loop1 bin/hdd.img
+sudo bochs -f bin/bochsrc.txt -q
+sudo losetup -d /dev/loop1
