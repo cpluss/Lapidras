@@ -5,7 +5,7 @@
 extern virtual_console_t *current_visible_console;
 
 /*default keymap - dvorak*/
-char dvorak_keymap_ascii[128] =
+byte dvorak_keymap_ascii[128] =
 {
 	0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
 	'9', '0', '-', '=', 0x08,	/* Backspace */
@@ -219,7 +219,7 @@ static void kbd_handler(registers_t *regs)
 			break;
 	}
 	
-	char c = current_keymap[scancode];
+	byte c = current_keymap[scancode];
 	if(scancode & 0x80)
 		return;
 	

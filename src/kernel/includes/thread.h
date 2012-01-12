@@ -26,6 +26,7 @@ typedef struct thread
 	uint eip;			//Instruction pointer
 	
 	uint state;			//State of the thread
+	uint status;		//Status of the thread -> used when executing binaries.
 	
 	page_directory_t *page_directory;
 	
@@ -42,6 +43,7 @@ typedef struct thread
 	list_t *signal_queue; //The signal queue, to recieve messages from other threads / services
 	
 	struct thread *next; //The next in the list
+	struct thread *parent; //If the thread got a parent, here it is..
 } thread_t;
 
 //Start the multithreading
@@ -64,6 +66,8 @@ void thread_set_state(thread_t *th, uint state);
 void thread_set_priority(uint priority);
 inline thread_t *CurrentThread();
 void make_thread_ready(thread_t *th);
+
+void kill_thread(thread_t *th);
 
 void set_interactive();
 

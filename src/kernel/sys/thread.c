@@ -193,6 +193,7 @@ int fork()
 	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->page_directory = dir;
 	new->signal_queue = list_copy(current_thread->signal_queue);
+	new->parent = (thread_t*)current_thread;
 	
 	total_thread_count++;
 	make_thread_ready(new);
@@ -308,7 +309,7 @@ thread_t *get_next_thread()
 	free((void*)np);
 	if(ret->state != RUNNABLE)
 	{
-		if(ret->state == DEAD)
+		if(ret->state == DEAD || ret->state == SLEEPING)
 		{
 			notify_event(EVENT_THREAD_DIE, (void*)ret);
 			list_insert(thread_dead, (void*)ret);
@@ -344,6 +345,12 @@ void free_dead_threads()
 			continue;
 		if(th)
 		{
+			if(th->state == SLEEPING)
+			{
+				list_insert(thread_sleep, (void*)th);
+				continue;
+			}
+			
 			free((void*)(th->esp_loc - KERNEL_STACK_SIZE));
 			free((void*)(th->esp0 - KERNEL_STACK_SIZE));
 			free(th->page_directory);
@@ -386,7 +393,7 @@ void schedule()
 			notify_event(EVENT_THREAD_WAIT, (void*)current_thread);
 			list_insert(thread_wait, (thread_t*)current_thread);
 		}
-		else if(current_thread->state == DEAD)
+		else if(current_thread->state == DEAD || current_thread->state == SLEEPING)
 		{
 			notify_event(EVENT_THREAD_DIE, (void*)current_thread);
 			list_insert(thread_dead, (thread_t*)current_thread);
@@ -425,6 +432,25 @@ void _switch(thread_t *new)
 		"sti\n"
 		"jmp *%%ebx"
 		: : "r"(eip), "r"(esp), "r" (ebp), "r"(current_directory->physicalAddr) : "%ebx", "%esp", "%eax");
+}
+
+void kill_thread(thread_t *th)
+{
+	if(th->state == SLEEPING)
+	{
+		foreach(item, thread_sleep)
+		{
+			thread_t *t = (thread_t*)item->value;
+			if(t->id == th->id)
+			{
+				list_delete(thread_sleep, item);
+				free(item);
+				break;
+			}
+		}
+	}
+	th->state = DEAD;
+	list_insert(thread_dead, (void*)th);
 }
 
 int GetPID()

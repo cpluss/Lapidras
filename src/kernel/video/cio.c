@@ -143,7 +143,7 @@ void set_console(virtual_console_t *console, uint takeover)
 	asm volatile("sti");
 }
 
-void kputc_v(virtual_console_t *console, char c)
+void kputc_v(virtual_console_t *console, byte c)
 {
 	//backspace
 	if(c == 0x08)
@@ -202,12 +202,12 @@ void kputc_v(virtual_console_t *console, char c)
 	scroll();
 	move_cursor();
 }
-void kputc(char c)
+void kputc(byte c)
 {
 	kputc_v(current_console, c);
 	move_cursor();
 }
-void kputs(char *s)
+void kputs(byte *s)
 {
 	int i;
 	for(i = 0; i < strlen(s); i++)
@@ -235,7 +235,7 @@ void clear_screen()
 	_cx = 0;
 }
 
-void kprint_v(virtual_console_t *console, char *s, ...)
+void kprint_v(virtual_console_t *console, byte *s, ...)
 {
 	va_list ap;
 	int i, n, j = 0;
@@ -252,12 +252,12 @@ void kprint_v(virtual_console_t *console, char *s, ...)
 			{
 				case 'c':
 				{
-					char c = va_arg(ap, int);
+					byte c = va_arg(ap, int);
 					kputc_v(console, c);
 				}
 				case 's':
 				{
-					char *str = va_arg(ap, char*);
+					byte *str = va_arg(ap, byte*);
 					for(j = 0; j < strlen(str); j++)
 						kputc(str[j]);
 				}break;
@@ -268,7 +268,7 @@ void kprint_v(virtual_console_t *console, char *s, ...)
 						kputc_v(console, '0');
 					else
 					{
-						char c[32];
+						byte c[32];
 						j = 0;
 						while(num > 0)
 						{
@@ -306,7 +306,7 @@ void kprint_v(virtual_console_t *console, char *s, ...)
 	
 	va_end(ap);
 }
-void kprint(char *s, ...)
+void kprint(byte *s, ...)
 {
 	va_list ap;
 	int i, n, j = 0;
@@ -318,17 +318,17 @@ void kprint(char *s, ...)
 		if(s[i] == '%')
 		{
 			i++;
-			char type = s[i];
+			byte type = s[i];
 			switch(type)
 			{
 				case 'c':
 				{
-					char c = va_arg(ap, int);
+					byte c = va_arg(ap, int);
 					kputc(c);
 				}
 				case 's':
 				{
-					char *str = va_arg(ap, char*);
+					byte *str = va_arg(ap, byte*);
 					for(j = 0; j < strlen(str); j++)
 						kputc(str[j]);
 				}break;
@@ -404,7 +404,7 @@ void kset_status(char *str)
 void init_video_console()
 {
 	video_console = (virtual_console_t*)kmalloc(sizeof(virtual_console_t));
-	memset((char*)video_console, 0, sizeof(virtual_console_t));
+	memset((byte*)video_console, 0, sizeof(virtual_console_t));
 	video_console->console_buffer = (char*)VIDMEM_BUFFER;
 	video_console->old_console_buffer = (char*)VIDMEM_BUFFER;
 	current_console = video_console;

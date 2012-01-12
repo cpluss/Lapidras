@@ -55,26 +55,6 @@ static void shell_dir(int argc, char **argv)
 	
 	kputc('\n');
 }
-static void shell_cat(int argc, char **argv)
-{
-	if(argc < 2)
-	{
-		kprint("Usage: %s <file_to_read>\n", argv[0]);
-		return;
-	}
-	
-	fs_node_t *node = finddir_fs(ramfs_root, argv[1]);
-	if(node <= 0)
-	{
-		kprint("Could not open file '%s' for reading.\n", argv[1]);
-		return;
-	}
-	
-	char *buffer = (char*)kmalloc(node->length);
-	read_fs(node, 0, node->length, buffer);
-	kprint("%s", buffer);
-	free(buffer);
-}
 
 int shell_find(int argc, char **argv)
 {
@@ -105,7 +85,6 @@ void shell_init()
 	register_command("proc", &shell_proc);
 	register_command("clear", &shell_clear);
 	register_command("dir", &shell_dir);
-	register_command("cat", &shell_cat);
 }
 void shell()
 {
@@ -117,11 +96,10 @@ void shell()
 	
 	for(;;)
 	{
-		kprint("%s> ", working_directory);
+		kprint("/> ");
 		memset(cmd, 0, 128);
 		kbd_get_string(cmd);
 		
-		char ext[5];
 		char *argv[128];
 		char *save;
 		char *pch;
@@ -134,10 +112,9 @@ void shell()
 			pch = strtok_r((char*)0, " ", &save);
 		}
 		argv[tokenid] = 0;
-		int argc = tokenid;
 		
 		//check for preexisting commands
-		if(shell_find(argc, argv))
+		if(shell_find(tokenid, argv))
 			continue;
 			
 		if(!finddir_fs(ramfs_root, argv[0]))
@@ -146,13 +123,11 @@ void shell()
 			continue;
 		}
 		
-		memcpy(ext, (char*)((uint)argv[0] + strlen(argv[0]) - 5), 4);
-		ext[5] = 0;
-		if(ext[0] == '.' && ext[1] == 'b' && ext[2] == 'i' && ext[3] == 'n')
-			system(cmd, argc, argv);
-		else
-			kprint("%s is not a executable.\n", cmd);
-		
+		int ret = system(cmd, tokenid, argv);
+		if(ret == 0)
+			kprint("Could not file %s\n", cmd);
+		else if(ret == 2)
+			kprint("%s is not a valid executable.\n", cmd);
 	}
 	
 	for(;;); //Just in case

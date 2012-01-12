@@ -8,19 +8,21 @@ CFLAGS = -nostdlib -nostdinc -fno-builtin -ffreestanding
 C_FILES = $(shell find *.c)
 OBJ_FILES = $(patsubst %.c,%.o,$(C_FILES)) ../clib/system.o ../clib/string.o
 
+OUT_NAME = hellothree
+
 .PHONY: all clean
 
-all: ../bin/hellothree.bin
+all: ../bin/$(OUT_NAME)
 	
 %.o: %.c Makefile
 	@echo CC      $<       $@
 	@$(CC) $(CFLAGS) -c $< -o $@
 	
-../bin/hellothree.bin: $(OBJ_FILES)
-	@echo LINKING hellothree.bin
-	@ld $(LDFLAGS) -o hellothree.elf $(OBJ_FILES)
-	@objcopy -O binary hellothree.elf ../bin/hellothree.bin
+../bin/$(OUT_NAME): $(OBJ_FILES)
+	@echo LINKING $(OUT_NAME)
+	@ld $(LDFLAGS) -o ../bin/$(OUT_NAME) $(OBJ_FILES)
+#@objcopy -O binary $(OUT_NAME).elf ../bin/$(OUT_NAME).bin
 
 clean:
-	@rm *.o ../bin/hellothree.bin hellothree.elf
+	@rm *.o ../bin/$(OUT_NAME)
 	

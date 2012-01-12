@@ -59,9 +59,9 @@ void set_console(virtual_console_t *console, uint takeover);
 void kset_status(char *str);
 
 //print functions
-void kprint(char *s, ...);
-void kputs(char *s);
-void kputc(char c);
+void kprint(byte *s, ...);
+void kputs(byte *s);
+void kputc(byte c);
 
 void init_video_console();
 
