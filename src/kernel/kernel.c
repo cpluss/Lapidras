@@ -1,6 +1,7 @@
 #include "system.h"
 #include "thread.h"
-
+#include "fat.h"
+#define TO_ENTRY(ptr) ((fat16_entry_t*)ptr)
 extern void shell();
 int kmain(multiboot_t *multiboot, uint esp)
 {
@@ -44,6 +45,26 @@ int kmain(multiboot_t *multiboot, uint esp)
     //Initialize the threading
     start_multithreading(esp);
     
+    //Mount hd0 - a fat16.
+    ata_device_t ata;
+	ata_mount(&ata, 0, 0);
+	ushort ident[256];
+	read_identify(&ata, ident);
+	fs_node_t *tmp = mount_fat16(&ata, 0);
+	if(!tmp)
+	{
+		kprint("Could not find the harddrive partition.\n");
+		return 0;
+	}
+	fs_node_t *dev = finddir_fs(fs_root, "dev");
+	if(!dev)
+	{
+		kprint("Could not find /dev.\n");
+		return 0;
+	}
+	mounton_fs(dev, tmp);
+    
+    //Start a basic shell thread
     CreateThread("shell", (uint)shell, 2, RUNNABLE);
     
     exit();

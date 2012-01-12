@@ -1,10 +1,13 @@
 #include "initrd.h"
 #include "fs.h"
+#include "list.h"
 
 initrd_info_header_t *info_header;	//The information header
 initrd_header_t *file_headers;		//All the file headers
 fs_node_t *initrd_root;				//The root node of our directory
 fs_node_t *initrd_dev;				//Add a directory for /dev so we can add devfs later on
+list_t *dev_children;				//Children under dev
+
 fs_node_t *root_nodes;				//List of file nodes
 int nroot_nodes;					//Number of file nodes
 
@@ -43,12 +46,31 @@ static uint initrd_read(fs_node_t *node, uint offset, uint size, byte *buffer)
 
 static struct dirent *initrd_readdir(fs_node_t *node, uint index)
 {
-	if(node == initrd_root && index == 0)
+	if(node == initrd_root && index == 0 && node != initrd_dev)
 	{
 		strcpy(dirent.name, "dev");
 		dirent.name[3] = 0; //make sure string is null-terminated
 		dirent.inode = 0;
 		return &dirent;
+	}
+	if(node == initrd_dev)
+	{
+		if(index >= dev_children->length)
+			return 0;
+			
+		int n = 0;
+		foreach(item, dev_children)
+		{
+			if(n == index)
+			{
+				fs_node_t *n = (fs_node_t*)item->value;
+				strcpy(dirent.name, n->name);
+				dirent.name[strlen(n->name)] = 0;
+				dirent.inode = n->inode;
+				return &dirent;
+			}
+			n++;
+		}
 	}
 	if(index - 1 >= nroot_nodes)
 		return 0;
@@ -63,6 +85,21 @@ static fs_node_t *initrd_finddir(fs_node_t *node, char *name)
 {
 	if(node == initrd_root && strcmp(name, "dev"))
 		return initrd_dev;
+	if(node == initrd_dev)
+	{
+		foreach(item, dev_children)
+		{
+			fs_node_t *n = (fs_node_t*)item->value;
+			if(strcmp(n->name, name))
+			{
+				if(n->flags == FS_MOUNTPOINT) //this is a mountpoint, return the pointer
+					return n->ptr;
+				else
+					return n;
+				break;
+			}
+		}
+	}
 		
 	int i;
 	for(i = 0; i < info_header->num; i++)
@@ -71,6 +108,21 @@ static fs_node_t *initrd_finddir(fs_node_t *node, char *name)
 			return &root_nodes[i];
 	}
 	return 0;
+}
+
+static void initrd_mounton(fs_node_t *node, fs_node_t *ad)
+{
+	if(initrd_dev != node)
+		return;
+		
+	//Create a symlink
+	fs_node_t *n = (fs_node_t*)kmalloc(sizeof(fs_node_t));
+	memset((byte*)n, 0, sizeof(fs_node_t));
+	strcpy(n->name, ad->name);
+	n->flags = FS_MOUNTPOINT;
+	n->ptr = ad;
+	n->inode = ad->inode;
+	list_insert(dev_children, (void*)n); //Insert the mountpoint
 }
 
 fs_node_t *init_initrd(uint location)
@@ -106,7 +158,9 @@ fs_node_t *init_initrd(uint location)
 	initrd_dev->readdir = &initrd_readdir;
 	initrd_dev->finddir = &initrd_finddir;
 	initrd_dev->ptr = 0;
+	initrd_dev->mount_on = &initrd_mounton;
 	initrd_dev->impl = 0; 
+	dev_children = list_create();
 	
 	//root node information
 	root_nodes = (fs_node_t*)kmalloc(sizeof(fs_node_t) * info_header->num, 0, 0);

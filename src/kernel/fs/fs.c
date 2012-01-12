@@ -26,6 +26,12 @@ void close_fs(fs_node_t *node)
 		node->close(node);
 }
 
+void mounton_fs(fs_node_t *node, fs_node_t *ad)
+{
+	if(node->mount_on)
+		node->mount_on(node, ad);
+}
+
 struct dirent *readdir_fs(fs_node_t *node, uint index)
 {
 	if((node->flags & 0x7) == FS_DIRECTORY && node->readdir != 0)

@@ -1,6 +1,7 @@
 #include "system.h"
 #include "thread.h"
 extern fs_node_t *ramfs_root;
+fs_node_t *current_node;
 typedef void (*cmd_call_t)(int, char**);
 typedef struct cmd
 {
@@ -41,10 +42,10 @@ static void shell_dir(int argc, char **argv)
 {
 	int i = 0;
 	struct dirent *node = 0;
-	for(i = 0; (node = readdir_fs(ramfs_root, i)) != 0; i++)
+	for(i = 0; (node = readdir_fs(current_node, i)) != 0; i++)
 	{
-		fs_node_t *fsnode = finddir_fs(ramfs_root, node->name);
-		if((fsnode->flags & 0x7) == FS_DIRECTORY)
+		fs_node_t *fsnode = finddir_fs(current_node, node->name);
+		if(fsnode->flags == FS_DIRECTORY)
 			ksetforeground(C_GREEN);
 		
 		kprint("%s ", node->name);
@@ -85,6 +86,11 @@ void shell_init()
 	register_command("proc", &shell_proc);
 	register_command("clear", &shell_clear);
 	register_command("dir", &shell_dir);
+	
+	//Find the right dir
+	//fs_node_t *dev = finddir_fs(ramfs_root, "dev");
+	//fs_node_t *fat16 = finddir_fs(dev, "fat16");
+	current_node = ramfs_root;
 }
 void shell()
 {
@@ -92,6 +98,7 @@ void shell()
 	
 	char *cmd = (char*)alloc(128);
 	char *working_directory = (char*)alloc(64);
+	memset(working_directory, 0, 64);
 	working_directory = "/";
 	
 	for(;;)

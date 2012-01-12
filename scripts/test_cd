@@ -1,4 +1,4 @@
 #!/bin/bash
 
-qemu-system-i386 -cdrom bin/cdrom.iso -boot d -m 32 -monitor stdio
+qemu-system-i386 -hda bin/hdd.img -cdrom bin/cdrom.iso -boot d -m 32 -monitor stdio
 
