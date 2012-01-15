@@ -111,6 +111,14 @@ extern void kbd_get_string(char *buffer);
 
 extern void init_syscalls();
 
-extern int exec(const char *path, int argc, char **argv);
+extern int exec(fs_node_t *path, int argc, char **argv);
+extern int system(fs_node_t *path, int argc, char **argv);
+
+//The FPU functions
+extern void enable_fpu();
+extern void set_fpu_cw(const ushort cw);
+
+//FPU calculation functions
+extern float fsinus(float degree, float *out);
 
 #endif

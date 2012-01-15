@@ -2,7 +2,7 @@
 
 void main(int argc, char *argv[])
 {
-	kprint("Hellothree, that's me!\n");
+	kprint("Hello, that's me!\n");
 	
 	return;
 }

@@ -58,7 +58,9 @@ int main(int argc, char *argv[])
 		printf("writing %s -> %s at 0x%x\n", outfile, current_file, f_offset_begin);
 		
 		headers[i].magic = inf_header.magic;
+		
 		strcpy(headers[i].name, current_file);
+		
 		headers[i].f_offset = f_offset_begin;
 		
 		FILE *cf = fopen(current_file, "r");

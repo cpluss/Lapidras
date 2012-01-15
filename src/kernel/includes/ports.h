@@ -22,5 +22,6 @@ void insl(int port, void *addr, int cnt);
 void outsl(int port, const void *addr, int cnt);
 
 void insw(unsigned short port, void *addr, int cnt);
+void outsw(unsigned short port, void *addr, int cnt);
 
 #endif

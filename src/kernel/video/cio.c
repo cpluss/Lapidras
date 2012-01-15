@@ -369,6 +369,17 @@ void kprint(byte *s, ...)
 						kputc(hexarray[(num >> j) & 0xF]);
 					}
 				}break;
+                case 'f':
+                {    
+                    //Print the integer part, the one before the decimal point 
+                    float num = (float)va_arg(ap, double);
+                    int inum = (int)num;
+
+                    kprint("%i", inum);
+                    kputc('.'); //the decimal point
+                    int fnum = (num - inum) * 1000000; //increase by that much
+                    kprint("%i", fnum);
+                }
 			}
 		}
 		else

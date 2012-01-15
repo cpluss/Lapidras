@@ -7,8 +7,10 @@ for f in $(cat program_list); do
 	cd ..	 
 done
 
+cp bin/* ../initrd/
+
 #make the initrd
-cd bin
-./initrd_ins initrd *
-cd ..
-mv bin/initrd ./
+#cd bin
+#./initrd_ins initrd *
+#cd ..
+#mv bin/initrd ./

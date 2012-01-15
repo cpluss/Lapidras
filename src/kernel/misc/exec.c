@@ -8,29 +8,27 @@ extern page_directory_t *current_directory;
 typedef void (*call_t)(uint, char**);
 #define UCODE_START 0x400000
 
-int exec(const char *path, int argc, char **argv)
+int exec(fs_node_t *path, int argc, char **argv)
 {
 	//first set the thread name
-	strcpy(CurrentThread()->name, path);
-	
+	//strcpy(CurrentThread()->name, argv[0]);
+	/*
     int handle = fopen(path);    
     int n = ftell_size(handle);
     if(n <= 0)
-		return 0;
-    
-    //byte *buffer = (byte*)alloc(n);
-    //fread(buffer, n, 1, handle);
-    
+		return 0;*/
+		
     //Read binary contents
-    Elf32_Ehdr *ehdr = (Elf32_Ehdr*)kmalloc(n + 100);
-    fread((byte*)ehdr, n, 1, handle);
+    Elf32_Ehdr *ehdr = (Elf32_Ehdr*)kmalloc(path->length + 100);
+   // fread((byte*)ehdr, n, 1, handle);
+    read_fs(path, 0, path->length, (byte*)ehdr);
     
     //Elf read, verify that it is an elf
     if(ehdr->e_ident[0] != ELFMAG0 || ehdr->e_ident[1] != ELFMAG1 ||
 	   ehdr->e_ident[2] != ELFMAG2 || ehdr->e_ident[3] != ELFMAG3)
     {
 		//It is not an elf
-		fclose(handle);
+		//fclose(handle);
 		free(ehdr);
 		return 2; //Not an elf header -> -1
     }
@@ -68,7 +66,7 @@ int exec(const char *path, int argc, char **argv)
 	uint entry = (uint)ehdr->e_entry;
 	
 	free(ehdr);
-	fclose(handle);
+	//fclose(handle);
 	
 	if(l == 0)
 	{
@@ -83,7 +81,7 @@ int exec(const char *path, int argc, char **argv)
 	return 1;
 }
 
-int system(const char *path, int argc, char **argv)
+int system(fs_node_t *path, int argc, char **argv)
 {
 	int ret = fork();
 	if(ret == 0)

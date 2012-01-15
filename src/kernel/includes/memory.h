@@ -3,7 +3,7 @@
 #include "types.h"
 
 #define KHEAP_START 	0xC0000000
-#define KHEAP_SIZE  	0x0FFFFFFF //16 MB
+#define KHEAP_SIZE  	0x00FFFFFF //~10mb !
 #define KERNEL_STACK	0xE0000000
 
 struct heap;

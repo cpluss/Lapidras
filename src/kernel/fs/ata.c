@@ -58,14 +58,47 @@ void ata_mount(ata_device_t *device, byte drive, int channel)
 		device->Size = *(uint*)((uint)buffer + 200) / 2;
 	else //28-Bit addressing / CHS		
 		device->Size = *(uint*)((uint)buffer + 120) / 2;
+    device->image = 0;
+}
+
+void ata_memory_mount(ata_device_t *device, fs_node_t *image)
+{
+    //create a buffer where we will store the image within'
+    byte *b = (byte*)kmalloc(image->length + 0x10); 
+    kprint("The size of the image is %i bytes.\n", image->length);
+    read_fs(image, 0, image->length, b);
+
+    //Now set the device options
+    device->Type = ATA_DEVICE_MEMORY;
+    //Set the model
+    strcpy(device->Model, image->name);
+    if(strlen(image->name) < 41)
+    {
+        int n = 41 - strlen(image->name);
+        for(; n > 0; n--)
+            device->Model[n] = 0x20; //Space
+    }
+
+    device->Size = image->length;
+    //set the device image pointer
+    device->image = (void*)b; //The image is loaded at b
 }
 
 void read_hdd(ata_device_t *device, int lba, char *buffer, int size)
 {
-	int sectors = size / 512; //the amount of sectors to read
+	if(device->Type == ATA_DEVICE_MEMORY)
+    {
+        //The device exists in memory, just copy from the memory location
+        int offset = lba * 512; //lba -> sector from start
+        kprint("\nReading %i bytes of lba %i ( %x ).\n", size, lba, (uint)device->image + offset);
+        memcpy(buffer, (byte*)((uint)device->image + offset), size);
+        return; //This is very simple, no need to use PIO ( slow as hell )
+    }
+   
+    int sectors = size / 512; //the amount of sectors to read
 	sectors += 1; //read one sector more than we should..
 	char *buf = (char*)alloc(sectors * 512);
-	
+
 	int i = 0, j = lba;
 	for(i = 0; i < sectors; i++, j++)
 	{
@@ -94,7 +127,19 @@ void read_ata_sector(ata_device_t *device, int lba, char *buffer)
 	outb(device->base + 5, (byte)(lba >> 16)); //high
 	
 	//wait 1ms - took to long with several file operations
-	wait(1);
+	//wait(1);
+	int n = 4;
+	while(1)
+	{
+		byte in = inb(device->base + 7);
+		if(n > 0)
+		{
+			n--;
+			continue;
+		}
+		if(!(in & 0x80) && !(in & 0x08))
+			break;
+	}
 	
 	//send command to read
 	outb(device->base + 7, 0x20);
@@ -126,18 +171,21 @@ void write_ata_sector(ata_device_t *device, int lba, char *buffer)
 	
 	//send write command
 	outb(device->base, 0x30);
-	
+	kputc('a');
 	//poll, poll, and poll.. -> or just wait for the device, whatever you prefer
 	while(!(inb(device->base + 7) & 0x08));
+	kputc('d');
+	//write using the output work assembler command ( inline assembler )
+	outsw(device->base, buffer, 256);
 	
 	//write 256 words = 512 chars = 1 sector
-	int i = 0;
+	/*int i = 0;
 	ushort tmp = 0;
 	for(i = 0; i < 256; i++)
 	{
 		tmp = buffer[8 + i * 2] | (buffer[8 + i * 2] << 8);
 		outw(device->base, tmp);
-	}
+	}*/
 	
 	//reset
 	outb(device->base + 7, 0xE7);

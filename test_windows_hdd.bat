@@ -1,2 +1,2 @@
 echo Starting QEMU...
-qemu\qemu.exe -L .\qemu -M pc -m 64 -boot c -std-vga -soundhw pcspk -hda bin/hdd.img -m 32
+qemu\qemu.exe -L .\qemu -M pc -m 64 -boot c -std-vga -soundhw pcspk -hda bin/hdd_32.img -m 32

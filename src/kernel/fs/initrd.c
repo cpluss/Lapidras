@@ -93,7 +93,7 @@ static fs_node_t *initrd_finddir(fs_node_t *node, char *name)
 			if(strcmp(n->name, name))
 			{
 				if(n->flags == FS_MOUNTPOINT) //this is a mountpoint, return the pointer
-					return n->ptr;
+					return (fs_node_t*)n->ptr;
 				else
 					return n;
 				break;
@@ -102,7 +102,7 @@ static fs_node_t *initrd_finddir(fs_node_t *node, char *name)
 	}
 		
 	int i;
-	for(i = 0; i < info_header->num; i++)
+	for(i = 0; i < nroot_nodes; i++)
 	{
 		if(strcmp(name, root_nodes[i].name))
 			return &root_nodes[i];
@@ -164,25 +164,28 @@ fs_node_t *init_initrd(uint location)
 	
 	//root node information
 	root_nodes = (fs_node_t*)kmalloc(sizeof(fs_node_t) * info_header->num, 0, 0);
-	nroot_nodes = info_header->num;
-	int i;
+	nroot_nodes = info_header->num - 1;
+	int i, j = 0;
 	for(i = 0; i < info_header->num; i++)
 	{
 		//edit file header offset to include the location
 		file_headers[i].f_offset += location;
-		//create a new file nade
-		strcpy((char*)root_nodes[i].name, (char*)&file_headers[i].name);
-		root_nodes[i].mask = root_nodes[i].uid = root_nodes[i].gid = 0;
-		root_nodes[i].length = file_headers[i].f_size;
-		root_nodes[i].inode = i;
-		root_nodes[i].flags = FS_FILE;
-		root_nodes[i].read = &initrd_read;
-		root_nodes[i].write = 0;
-		root_nodes[i].readdir = 0;
-		root_nodes[i].finddir = 0;
-		root_nodes[i].open = 0;
-		root_nodes[i].close = 0;
-		root_nodes[i].impl = 0;
+		//create a new file node
+        if(strcmp((char*)&file_headers[i].name, "initrd_ins"))
+            continue;
+		strcpy((char*)root_nodes[j].name, (char*)&file_headers[i].name);
+		root_nodes[j].mask = root_nodes[j].uid = root_nodes[j].gid = 0;
+		root_nodes[j].length = file_headers[i].f_size;
+		root_nodes[j].inode = i;
+		root_nodes[j].flags = FS_FILE;
+		root_nodes[j].read = &initrd_read;
+		root_nodes[j].write = 0;
+		root_nodes[j].readdir = 0;
+		root_nodes[j].finddir = 0;
+		root_nodes[j].open = 0;
+		root_nodes[j].close = 0;
+		root_nodes[j].impl = 0;
+        j++;
 	}
 	
 	return initrd_root;

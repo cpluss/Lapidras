@@ -11,6 +11,7 @@ typedef void (*close_type_t)(struct fs_node*);
 typedef void (*attach_type_t)(struct fs_node*, struct fs_node*);
 typedef struct dirent *(*readdir_type_t)(struct fs_node*, uint);
 typedef struct fs_node *(*finddir_type_t)(struct fs_node*, char *name);
+typedef struct fs_node *(*create_node_t)(struct fs_node*, char *, int);
 
 typedef struct fs_node
 {
@@ -30,6 +31,7 @@ typedef struct fs_node
 	readdir_type_t readdir;
 	finddir_type_t finddir;
 	attach_type_t mount_on;
+	//create_node_t create;
 	
 	struct fs_node *ptr; //used by mountpoints
 	
@@ -57,11 +59,13 @@ void close_fs(fs_node_t *node);
 struct dirent *readdir_fs(fs_node_t *node, uint index);
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
 void mounton_fs(fs_node_t *node, fs_node_t *ad);
+fs_node_t *create_fs(fs_node_t *parent, char *name, int attribute);
 
 #define ATA_DEVICE_ATAPI 	0x00
 #define ATA_DEVICE_SATA		0x01
 #define ATA_DEVICE_ATA		0x02
 #define ATA_DEVICE_INVALID	0x09
+#define ATA_DEVICE_MEMORY   0xFF //Memory device .. Located in memory
 
 typedef struct ata_device
 {
@@ -74,9 +78,12 @@ typedef struct ata_device
 	byte Model[41]; //Model string
 	
 	uint CommandSets;
+
+    void *image; //NULL if not a memory device
 } ata_device_t;
 
 void ata_mount(ata_device_t *device, byte drive, int channel);
+void ata_memory_mount(ata_device_t *device, fs_node_t *image);
 void setup_ata(ata_device_t *device, int channel);
 
 void read_ata_sector(ata_device_t *device, int lba, char *buffer);

@@ -59,3 +59,7 @@ void insw(unsigned short port, void *addr, int cnt)
 {
 	asm volatile("rep; insw" : "+D"(addr), "+c"(cnt) : "d"(port) : "memory");
 }
+void outsw(unsigned short port, void *addr, int cnt)
+{
+	asm volatile("rep; outsw" : "+D"(addr), "+c"(cnt) : "d"(port) : "memory");
+}

@@ -25,8 +25,9 @@ void get_partition_table(ata_device_t *device, partitiontable_t *table, byte ind
 	char *buffer = (char*)alloc(512); //read bootsector, LBA 0
 	memset(buffer, 0, 512);
 	//read data
-	read_ata_sector(device, 0, buffer);
-	
+	//read_ata_sector(device, 0, buffer);
+	read_hdd(device, 0, buffer, 512);
+
 	//insert the data by hand, the manual way
 	table->bootflag = *(byte*)(buffer + offset);
 	table->systemid = *(byte*)(buffer + offset + 4);

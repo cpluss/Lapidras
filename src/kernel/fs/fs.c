@@ -46,3 +46,10 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name)
 	else
 		return 0;
 }
+
+fs_node_t *create_fs(fs_node_t *node, char *name, int attribute)
+{
+	//if((node->flags & 0xf) == FS_DIRECTORY && node->create != 0)
+		//return node->create(node, name, attribute);
+	return 0;
+}

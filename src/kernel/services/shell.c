@@ -1,7 +1,10 @@
 #include "system.h"
 #include "thread.h"
+#include "fat.h"
 extern fs_node_t *ramfs_root;
-fs_node_t *current_node;
+extern fs_node_t *current_node;
+fs_node_t *bin;
+
 typedef void (*cmd_call_t)(int, char**);
 typedef struct cmd
 {
@@ -9,6 +12,7 @@ typedef struct cmd
 	cmd_call_t handler;
 } command_t;
 list_t *avail_commands;
+extern fs_node_t *evaluate_path(char *path);
 
 static void shell_proc(int argc, char **argv)
 {
@@ -38,13 +42,89 @@ static void shell_clear(int argc, char **argv)
 {
 	clear_screen();
 }
-static void shell_dir(int argc, char **argv)
+
+static void list_directory_tree(fs_node_t *dir, int t)
 {
 	int i = 0;
 	struct dirent *node = 0;
-	for(i = 0; (node = readdir_fs(current_node, i)) != 0; i++)
+	for(i = 0; (node = readdir_fs(dir, i)) != 0; i++)
 	{
-		fs_node_t *fsnode = finddir_fs(current_node, node->name);
+		fs_node_t *fsnode = finddir_fs(dir, node->name);
+		if(fsnode->flags == FS_DIRECTORY)
+			ksetforeground(C_GREEN);
+		
+		int n;
+		for(n = 0; n < t; n++)
+			kputc('\t');
+			
+		kprint("%s\n", node->name);
+		ksetdefaultcolor();
+		
+		if(fsnode->flags == FS_DIRECTORY)
+			list_directory_tree(fsnode, t + 1);
+	}	
+}
+static void shell_dir(int argc, char **argv)
+{
+	list_directory_tree(current_node, 0);
+}
+static void shell_ls(int argc, char **arg)
+{
+	fs_node_t *directory;
+	if(argc >= 2)
+	{
+		char *path = arg[1];
+		
+		char *argv[128];
+		char *save;
+		char *pch;
+		pch = (char*)strtok_r((char*)path, "/", &save);
+		int tokenid = 0;
+		while(pch != 0)
+		{
+			argv[tokenid] = (char*)pch;
+			tokenid++;
+			pch = (char*)strtok_r((char*)0, "/", &save);
+		}
+		argv[tokenid] = 0;
+		if(tokenid == 1) //Well, look inside the current directory
+			directory = finddir_fs(current_node, argv[0]);
+		else
+		{
+			int i;
+			fs_node_t *next_node = 0;
+			fs_node_t *cur_node = current_node;
+			for(i = 0; i < tokenid; i++)
+			{
+				fs_node_t *node = finddir_fs(cur_node, argv[i]);
+				if(!node)
+					continue;
+				
+				if(node->flags == FS_DIRECTORY && (i + 1 != tokenid))
+					cur_node = node;
+				else
+				{
+					if(i + 1 == tokenid)
+						directory = node;
+					break;
+				}
+			}
+		}
+		
+		if(!directory)
+		{
+			kprint("Could not find %s\n", arg[1]);
+			return;
+		}
+	}
+	else
+		directory = current_node;
+	
+	int i = 0;
+	struct dirent *node = 0;
+	for(i = 0; (node = readdir_fs(directory, i)) != 0; i++)
+	{
+		fs_node_t *fsnode = finddir_fs(directory, node->name);
 		if(fsnode->flags == FS_DIRECTORY)
 			ksetforeground(C_GREEN);
 		
@@ -80,21 +160,19 @@ void register_command(char *n, cmd_call_t handler)
 }
 void shell_init()
 {
+	strcpy(CurrentThread()->name, "shell");
+	
 	kprint("Welcome to Lapidras v%s\n", VERSION);
 	avail_commands = list_create();
 	
 	register_command("proc", &shell_proc);
 	register_command("clear", &shell_clear);
 	register_command("dir", &shell_dir);
-	
-	//Find the right dir
-	//fs_node_t *dev = finddir_fs(ramfs_root, "dev");
-	//fs_node_t *fat16 = finddir_fs(dev, "fat16");
-	current_node = ramfs_root;
+	register_command("ls", &shell_ls);
 }
 void shell()
 {
-	shell_init();
+	shell_init(bin);
 	
 	char *cmd = (char*)alloc(128);
 	char *working_directory = (char*)alloc(64);
@@ -103,7 +181,7 @@ void shell()
 	
 	for(;;)
 	{
-		kprint("/> ");
+		kprint("/> ", current_node->name);
 		memset(cmd, 0, 128);
 		kbd_get_string(cmd);
 		
@@ -124,13 +202,18 @@ void shell()
 		if(shell_find(tokenid, argv))
 			continue;
 			
-		if(!finddir_fs(ramfs_root, argv[0]))
+		fs_node_t *node = finddir_fs(current_node, argv[0]);
+		if(!node)
 		{
-			kprint("Could not find command %s.\n", argv[0]);
-			continue;
+			node = finddir_fs(bin, argv[0]);
+			if(!node)
+			{
+				kprint("Could not find file %s\n", argv[0]);
+				continue;
+			}
 		}
 		
-		int ret = system(cmd, tokenid, argv);
+		int ret = exec(node, tokenid, argv);
 		if(ret == 0)
 			kprint("Could not file %s\n", cmd);
 		else if(ret == 2)

@@ -278,6 +278,7 @@ void init_kbd()
 	asm volatile("cli"); 	//No interrupts now...
 	register_interrupt_handler(33, &kbd_handler);
 	set_dvorak(); //by default ;)
+	//set_qwerty();
 	
 	listeners = list_create();
 	

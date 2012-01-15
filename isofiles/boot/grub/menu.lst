@@ -1,4 +1,5 @@
 default 0
+timeout 0
 title Lapidras
 kernel /boot/kernel.bin
 module /initrd
