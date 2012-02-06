@@ -1,0 +1,288 @@
+#include "memory.h"
+#include "paging.h"
+#include "thread.h"
+#include "event.h"
+
+extern page_directory_t *kernel_directory, *current_directory;
+
+extern uint end;
+uint placement_address = (uint)&end + 0x1000;
+
+//placeholder to hold the memory being allocated and max memory
+uint allocated_memory = 0;
+
+heap_t *kheap = 0;
+
+uint kmalloc_real(uint sz, int align, uint *phys)
+{
+    if(kheap == 0)
+    {
+		if(align == 1 && (placement_address & 0xFFFFF000)) //if the address isn't already page aligned
+		{
+			//align it
+			placement_address &= 0xFFFFF000;
+			placement_address += 0x1000;
+		}
+		if(phys)
+			*phys = placement_address;
+		
+		uint tmp = placement_address;
+		placement_address += sz;
+		return tmp;
+    }
+    else //memory management is enabled
+    {
+		void *addr;
+		if(align)
+			addr = ralloc(sz, 1);
+		else
+			addr = alloc(sz);
+		if(phys != 0)
+		{
+			page_t *page = get_page((uint)addr, 0, current_directory);
+			*phys = (page->frame * 0x1000 + ((uint) addr & 0xFFF));
+		}
+		notify_event(EVENT_MEM_ALLOC, addr);
+		return (uint)addr;
+    }
+}
+uint kmalloc(uint sz)
+{
+	return kmalloc_real(sz, 0, 0);
+}
+
+heap_t *create_heap(uint start, uint size, uint rw)
+{
+	heap_t *ret = (heap_t*)(start - sizeof(heap_t));
+	memset((byte*)ret, 0, sizeof(heap_t));
+   
+    if(start & 0xFFF) //Is it page aligned?
+    {
+        //It is not.. Make it so
+        start += 0x1000;
+        start &= 0xFFFFF000;
+    }
+
+    //Create a hole at the beginning
+    block_header_t *head = (block_header_t*)start;
+    head->owner = -1; //No owner, it is a hole
+    head->used = 0; //Hole ..
+    head->size = size - sizeof(block_header_t);
+    head->start = start + sizeof(block_header_t);
+    head->heap = ret;
+    head->magic = HEAP_MAGIC;
+    head->next = 0;
+    head->prev = 0;
+
+    ret->rw = rw;
+    ret->start = start;
+    ret->tail = 0;
+    ret->head = head;
+    //ret->nblocks = 0;
+    ret->size = size - sizeof(block_header_t);
+
+    allocated_memory = sizeof(block_header_t); //The current header is the only memory usage so far
+}
+
+static block_header_t *get_hole(uint sz, uint align)
+{
+    block_header_t *tmp = (block_header_t*)kheap->head;
+    while(tmp->next)
+    {
+        if(align && tmp->used == 0)
+        {
+            uint offset = 0;
+            if(tmp->start & 0xFFF) //page alignation will be needed
+                offset = 0x1000 - (tmp->start & 0xFFF); //This will be the extra size for the hole needed..
+            if((tmp->size - offset) >= sz)
+                return tmp; //We fit? 0.o
+        }
+        else if(tmp->used == 0 && tmp->size >= sz)
+            return tmp; //This is currently the smallest ..
+        tmp = tmp->next;
+    }
+
+    if(tmp->used)
+        return 0; //this is not nice ..
+    return tmp;
+}
+static void make_smaller(block_header_t *block, uint sz)
+{
+    if(sz >= block->size)
+        return; //Can't shrink a block that's already small ..
+
+    //We need to set the new size, and create a new block in the space between the
+    //next block and this block
+    uint new_location = block->start + sz;
+    uint new_size = 0;
+    if(block->next == 0) //This is the last block in the chain of blocks..
+        new_size = (block->heap->start + block->heap->size) - new_location;
+    else
+        new_size = (uint)block->next - new_location;
+
+    //Create the new block
+    block_header_t *new = (block_header_t*)new_location;
+    new->magic = block->magic;
+    new->size = new_size + sizeof(block_header_t);
+    new->used = 0;
+    new->owner = -1; //No owner, it's a hole..
+    new->heap = block->heap;
+    new->start = new_location + sizeof(block_header_t);
+    
+    //Link it !
+    new->prev = block;
+    new->next = block->next;
+    if(block->next)
+        block->next->prev = new;
+    block->next = new;
+    //Done, hopefully
+
+    //Set the new block size
+    block->size = sz;
+
+    if(block->heap->tail == 0 && new->next == 0)
+        block->heap->tail = new; //Set a new tail
+}
+static void expand(block_header_t *block)
+{
+    //Expand a block as much as possible ..
+    if(block->prev && block->prev->used == 0) //Expand to the rear
+    {
+        //We're able to expand BACKWARDS, merging this block
+        //with the one behind, let's see how many blocks behind us that is holes..
+        block_header_t *tmp = block->prev;
+        while(tmp->prev && tmp->prev->used == 0)
+            tmp = tmp->prev;
+        //tmp should now be the block we're merging with ..
+        
+        //this is piece of cake -> Just set the current block to tmp
+        //Adjust the size first though.. ;)
+        uint new_size = (block->start + block->size) - tmp->start;
+        tmp->size = new_size;
+        
+        //Now link it all
+        if(block->next)
+            block->next->prev = tmp;
+        tmp->next = block->next; //Even if block is the last in the chain..
+        if(block == block->heap->tail) //set the new tail
+            block->heap->tail = tmp;
+        block = tmp; //All done! ;)
+    }
+    if(block->next && block->next->used == 0) //Expand to the front
+    {
+        //We do just as we did backwards, but forward this time
+        block_header_t *tmp = block->next;
+        while(tmp->next && tmp->next->used == 0)
+            tmp = tmp->next;
+        //tmp should now be the block we should merge with
+
+        //We do as above ..
+        uint new_size = (tmp->start + tmp->size) - block->start;
+        block->size = new_size;
+
+        //Now link it, once more
+        if(tmp->next)
+            tmp->next->prev = block;
+        block->next = tmp->next;
+        if(tmp == tmp->heap->tail)
+            tmp->heap->tail = block; //set the tail
+        //The merge SHOULD be done now
+    }
+}
+static void make_page_aligned(block_header_t *block)
+{
+    if((uint)block->start & 0xFFF) //it is not page aligned
+    {
+        //move it forward, to page align -> We assume the get_hole took care of this size thing
+        //otherwise -> we're screwed ..
+        //create a new block at a new location, which is page aligned
+        uint new_start = (uint)block->start + (0x1000 - ((uint)block->start & 0xFFF));
+
+        //Now we will put a block inside this block .. And this new block will point at the old block
+        //So that we destroy that block instead of this when using free(p) later
+        block_header_t *new = (block_header_t*)(new_start - sizeof(block_header_t));
+        new->magic = block->magic; //Copy the magic over
+        new->start = new_start; //This is actually pretty important .. This MUST be page aligned correctly
+        new->owner = block->owner;
+        new->used = 1;
+        new->size = block->size - (uint)block->start & 0xFFF;
+        new->heap = block->heap;
+        new->link = block; //Link it to the block, so that we're able to free the block instead of this
+                            //later on
+
+        block = new; //Yes, we do it like this ;)
+    }
+}
+
+void *ralloc(uint sz, int align)
+{
+    block_header_t *new_block = get_hole(sz, align);
+    if(!new_block) //Could not find a new block .. panic?
+    {
+        ksetforeground(C_RED);
+        kprint("Memory just ran out. How did this occur?\n");
+        kprint("Total allocation of memory is %i bytes.\n", allocated_memory);
+        asm volatile("cli");
+        for(;;);
+    }
+    asm volatile("cli"); //mwuhahhhaha!
+    if(align)
+    {
+        make_smaller(new_block, sz + 0x1000 + (new_block->start & 0xFFF));
+        make_page_aligned(new_block);
+    }
+    else //We're here
+    {
+        if(new_block->size > sz) //resize
+            make_smaller(new_block, sz);
+    }
+
+    new_block->owner = GetPID(); //Set the block owner id
+    new_block->used = 1; //This isn't a hole ..
+    allocated_memory += new_block->size;
+    asm volatile("sti");
+    return (void*)new_block->start;
+}
+void *alloc(uint sz)
+{
+    return ralloc(sz, 0);
+}
+
+uint valid_magic(void *p)
+{
+    return (((block_header_t*)((uint)p - sizeof(block_header_t)))->magic == HEAP_MAGIC);
+}
+void free(void *p)
+{
+    block_header_t *block = (block_header_t*)((uint)p - sizeof(block_header_t));
+    if(block->magic != HEAP_MAGIC) //Something wrong..
+    {
+        //Panic ..
+        ksetforeground(C_RED);
+        kprint("Could not validate magic of 0x%x\n", (uint)p);
+        asm volatile("cli");
+        for(;;);
+    }
+    asm volatile("cli"); //YOU SHALL NOT PASS!
+
+    if(block->link) //We should free the link, not the block ..
+        block = block->link;
+
+    //When we free a block, we invalidate it, and make it a lot bigger.
+    //Let's do that ;)
+    block->owner = -1;
+    block->used = 0;
+
+    allocated_memory -= block->size;
+
+    //Expand the block
+    expand(block);
+
+    //It isn't really harder than this actually ..
+    asm volatile("sti");
+}
+
+uint get_allocated_memory()
+{
+    return allocated_memory;
+}

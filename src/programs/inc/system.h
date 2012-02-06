@@ -53,7 +53,7 @@ typedef struct thread
 	
 	byte name[32];	//Thread name identifier
 	
-	uint signal_queue; //The signal queue, to recieve messages from other threads / services
+	uint *signal_queue; //The signal queue, to recieve messages from other threads / services
 	
 	void (*thread_c)();	//Thread entry..
 } thread_t;
@@ -69,6 +69,8 @@ extern thread_t *CreateThread(const char *name, void (*thread)(), uint priority,
 extern thread_t *CurrentThread();
 extern void WaitForSignal();
 extern signal_t *LatestSignal();
+extern void FastSignal(byte *message, const char *name);
+extern int QueueIsEmpty(thread_t *th);
 
 extern int fopen(const char *name);
 extern void fclose(int handle);

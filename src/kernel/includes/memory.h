@@ -1,56 +1,37 @@
-#ifndef MEMORY_H
-#define MEMORY_H
+#ifndef MEM_H
+#define MEM_H
 #include "types.h"
 
-#define KHEAP_START 	0xC0000000
-#define KHEAP_SIZE  	0x00FFFFFF //~10mb !
-#define KERNEL_STACK	0xE0000000
+#define KMEM_START          0xC0000000
+#define KMEM_SIZE           0x00FFFFFF //~10mb would be enough ..
+#define KMEM_CHUNK_SIZE     0x1000 //4kb chunks to begin with
+#define KERNEL_STACK		0xE0000000
 
-struct heap;
+#define FLAG_BLOCK_USED             0x1
+#define FLAG_BLOCK_RW               0x2
+#define FLAG_BLOCK_LINK             0x4
+#define FLAG_BLOCK_OFFSET           0xFFFFFFF0
+#define GET_BLOCK_LOCATION(x) (KMEM_START + ((x & FLAG_BLOCK_OFFSET) >> 4))
 
-typedef struct block_header
+typedef struct
 {
-	//size, where do we start?
-	uint start, size, magic;
-	//process owner - not used / reserved
-	byte owner, used;
-	
-	//linked list chain - flat memory model
-	struct block_header *next, *prev;
-	
-	//pointer to its heap
-	struct heap *heap;
-} block_header_t;
+    uint address : 28; //28-bit address.. Should be enough to address it all .. ( TEST_MEM_START + address -> the block location )
+    byte reserved : 1;
+    
+    byte link : 1; //To determine if this block is in a linked chain of blocks -> It's inactive in that case ..
+    byte rw : 1;
+    byte used : 1;
+} __attribute__((packed)) mem_bit_t;
 
-typedef struct block_footer
-{
-	//this is just to mark the end, -> point to the header
-	block_header_t *header;
-	uint magic;
-} block_footer_t;
-
-typedef struct heap
-{
-	//heap size, max_size and start address
-	uint size, max_size, start_addr;
-	
-	byte owner, rw; //reserved
-	
-	//where do the chain start?
-	block_header_t *start;
-	//and where does it end?
-	block_footer_t *end;
-} heap_t;
-
-uint kmalloc(uint size);
-uint kmalloc_real(uint size, int align, uint *phys);
+void mem_initialize();
 
 void *alloc(uint sz);
 void *ralloc(uint sz, int align);
 void free(void *p);
 
-heap_t *create_heap(uint start, uint size);
+uint kmalloc(uint size);
+uint kmalloc_real(uint size, int align, uint *phys);
 
-uint get_allocated_memory();
+int valid_magic(void *addr);
 
 #endif

@@ -94,11 +94,11 @@ isr_common_stub:
     
     call isr_handler
     
-    pop eax		;restore data segment
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+    pop ebx		;restore data segment
+    mov ds, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx
     
     popa 		;restore registers
     add esp, 8
@@ -124,11 +124,11 @@ irq_common_stub:
     
     call irq_handler
     
-    pop eax		;restore the old datasegment
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+    pop ebx		;restore the old datasegment
+    mov ds, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx
     
     popa		;pop old registers back
     add esp, 8

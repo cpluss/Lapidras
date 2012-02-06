@@ -71,10 +71,16 @@ static void shell_dir(int argc, char **argv)
 static void shell_ls(int argc, char **arg)
 {
 	fs_node_t *directory;
+    int listed_detail = 0;
 	if(argc >= 2)
-	{
+	{ 
 		char *path = arg[1];
-		
+		if(strcmp(path, "-l"))
+        {
+            path = arg[2];
+            listed_detail = 1;
+        }
+
 		char *argv[128];
 		char *save;
 		char *pch;
@@ -119,7 +125,9 @@ static void shell_ls(int argc, char **arg)
 	}
 	else
 		directory = current_node;
-	
+	if(strcmp(arg[1], "-l"))
+        listed_detail = 1;
+
 	int i = 0;
 	struct dirent *node = 0;
 	for(i = 0; (node = readdir_fs(directory, i)) != 0; i++)
@@ -127,14 +135,23 @@ static void shell_ls(int argc, char **arg)
 		fs_node_t *fsnode = finddir_fs(directory, node->name);
 		if(fsnode->flags == FS_DIRECTORY)
 			ksetforeground(C_GREEN);
-		
-		kprint("%s ", node->name);
+		if(!listed_detail)
+		    kprint("%s ", node->name);
+        else
+            kprint("0x%x -> %s\n", fsnode->length, node->name);
 		ksetdefaultcolor();
-		if(i > 10)
+		if(i > 1000)
 			break;
 	}
 	
 	kputc('\n');
+}
+static void shell_mem(int argc, char **argv)
+{
+	if(argc <= 1)
+    	kprint("Allocated memory: 0x%x bytes.\n", get_allocated_memory());
+	else if(strcmp(argv[1], "list"))
+		list_blocks();
 }
 
 int shell_find(int argc, char **argv)
@@ -169,6 +186,7 @@ void shell_init()
 	register_command("clear", &shell_clear);
 	register_command("dir", &shell_dir);
 	register_command("ls", &shell_ls);
+    register_command("mem", &shell_mem);
 }
 void shell()
 {

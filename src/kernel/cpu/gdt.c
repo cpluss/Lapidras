@@ -57,6 +57,7 @@ static void write_tss(int num, short ss0, uint esp0)
     // Here we set the cs, ss, ds, es, fs and gs entries in the TSS
     tss_entry.cs   = 0x0b;     
     tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
+    tss_entry.iomap_base = sizeof(tss_entry);
 }
 
 void set_kernel_stack(uint stack)

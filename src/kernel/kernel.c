@@ -4,10 +4,10 @@
 
 extern fs_node_t *current_node, *bin;
 extern void shell();
+extern page_directory_t *current_directory;
 
 void print_log_begin(const char *s)
 {
-    
 	int n = 75 - strlen((char*)s);
 	kprint((char*)s);
 	for(; n > 0; n--)
@@ -86,7 +86,9 @@ int kmain(multiboot_t *multiboot, uint esp)
     else
         print_log_end("OK");
     
-	shell(); 
-    
+    //shell();
+    CreateThread("shell", (uint)shell, 1, RUNNABLE);
+    exit();
+
     return 0;
 }

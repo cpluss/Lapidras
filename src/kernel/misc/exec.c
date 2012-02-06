@@ -34,6 +34,13 @@ int exec(fs_node_t *path, int argc, char **argv)
     }
     
     asm volatile("cli");
+    //Allocate the page tables ..
+    uint i;
+    for(i = UCODE_START; i < (UCODE_START + path->length + 0x100); i += 0x1000)
+        alloc_frame(get_page(i, 1, current_directory), 0, 0);
+    //Set the memory to zero ..
+    memset((char*)UCODE_START, 0, path->length);
+
     //Lead the loadable segments from the binary
     uint x, l = 0;
     for(x = 0; x < ehdr->e_shentsize * ehdr->e_shnum; x += ehdr->e_shentsize)
@@ -43,11 +50,11 @@ int exec(fs_node_t *path, int argc, char **argv)
 		{
 			l++;
 			//Allocate pages
-			uint i;
+			//uint i;
 			for(i = 0; i < shdr->sh_size + 0x2000; i += 0x1000)
 			{
 				//doesn't reallocate -> allocating those who isn't allocated already..
-				alloc_frame(get_page(shdr->sh_addr + i, 1, current_directory), 0, 1);
+				alloc_frame(get_page(shdr->sh_addr + i, 1, current_directory), 0, 0); //1);
 			}
 			
 			if(shdr->sh_type == SHT_NOBITS) //Is it the .bss?
@@ -85,7 +92,7 @@ int system(fs_node_t *path, int argc, char **argv)
 {
 	int ret = fork();
 	if(ret == 0)
-	{
+	{ 
 		int r = exec(path, argc, argv);
 		
 		//Got to find a better wait to inform the parent of my death..
@@ -97,7 +104,7 @@ int system(fs_node_t *path, int argc, char **argv)
 		volatile thread_t *child = GetThread(ret);
 		if(!child)
 			return -1;
-		
+		strcpy(child->name, argv[0]);
 		while(child->state != DEAD) wait(10);
 		return child->status;
 	}

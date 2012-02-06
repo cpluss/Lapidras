@@ -65,7 +65,7 @@ void ata_memory_mount(ata_device_t *device, fs_node_t *image)
 {
     //create a buffer where we will store the image within'
     byte *b = (byte*)kmalloc(image->length + 0x10); 
-    kprint("The size of the image is %i bytes.\n", image->length);
+    
     read_fs(image, 0, image->length, b);
 
     //Now set the device options
@@ -85,16 +85,14 @@ void ata_memory_mount(ata_device_t *device, fs_node_t *image)
 }
 
 void read_hdd(ata_device_t *device, int lba, char *buffer, int size)
-{
-	if(device->Type == ATA_DEVICE_MEMORY)
+{   
+    if(device->Type == ATA_DEVICE_MEMORY)
     {
-        //The device exists in memory, just copy from the memory location
-        int offset = lba * 512; //lba -> sector from start
-        kprint("\nReading %i bytes of lba %i ( %x ).\n", size, lba, (uint)device->image + offset);
-        memcpy(buffer, (byte*)((uint)device->image + offset), size);
-        return; //This is very simple, no need to use PIO ( slow as hell )
+        //Piece a cake!
+        memcpy(buffer, (char*)((uint)device->image + (lba * 512)), size);
+        return;
     }
-   
+    
     int sectors = size / 512; //the amount of sectors to read
 	sectors += 1; //read one sector more than we should..
 	char *buf = (char*)alloc(sectors * 512);
@@ -105,10 +103,8 @@ void read_hdd(ata_device_t *device, int lba, char *buffer, int size)
 		char *tmp = (char*)(buf + (i * 512));
 		read_ata_sector(device, j, tmp);
 	}
-	
 	//copy over the memory
 	memcpy(buffer, buf, size);
-	
 	free(buf);
 }
 

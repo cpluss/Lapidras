@@ -1,4 +1,4 @@
 #!/bin/bash
 
-qemu-system-i386 -cdrom bin/Lapidras.iso -boot d -m 32 -monitor stdio
+qemu-system-i386 -cdrom bin/Lapidras.iso -boot d -hda bin/hdd_32.img -m 32 -monitor stdio
 

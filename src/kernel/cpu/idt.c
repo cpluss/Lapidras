@@ -13,7 +13,7 @@ idt_ptr_t idt_ptr;
 
 void init_idt()
 {
-    idt_ptr.limit = sizeof(idt_entry_t) * 256 - 1;
+    idt_ptr.limit = (sizeof(idt_entry_t) * 256) - 1;
     idt_ptr.base = (uint)&idt_entries;
     
     //nullify all idt entries, so we won't triple fault
@@ -85,7 +85,7 @@ static void idt_set_gate(byte index, uint base, short sel, byte flags)
     idt_entries[index].sel = sel;
     idt_entries[index].always_zero = 0;
     
-    idt_entries[index].flags = flags; //or this bi 0x60 to enable user mode
+    idt_entries[index].flags = flags | 0x60; //or this bi 0x60 to enable user mode
 }
 
 static void remap_irq()

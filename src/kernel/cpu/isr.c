@@ -42,11 +42,11 @@ void register_interrupt_handler(byte n, isr_t handler)
 }
 
 void isr_handler(registers_t regs)
-{
+{ 
     if(interrupt_handlers[regs.int_no] != 0)
     {
-		isr_t handler = interrupt_handlers[regs.int_no];
-		handler(&regs);
+		isr_t handler = interrupt_handlers[regs.int_no];	
+        handler(&regs);
 		return;
     }
     

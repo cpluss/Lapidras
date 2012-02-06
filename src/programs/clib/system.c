@@ -22,7 +22,7 @@ int SendSignal(signal_t *s)
 signal_t *LatestSignal()
 {
 	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(18));
+	asm volatile("int $112" : "=a"(a) : "0"(5));
 	return (signal_t*)a;
 }
 void WaitForSignal()
@@ -63,6 +63,13 @@ thread_t *CurrentThread()
 	int a;
 	asm volatile("int $112" : "=a"(a) : "0"(6));
 	return (thread_t*)a;
+}
+
+int QueueIsEmpty(thread_t *th)
+{
+    int a;
+    asm volatile("int $112" : "=a"(a) : "0"(22), "b"((int)th));
+    return a;
 }
 
 int fopen(const char *path)
@@ -198,5 +205,11 @@ void kread(char *buffer)
 {
 	int a;
 	asm volatile("int $112" : "=a"(a) : "0"(20), "b"((int)buffer));
+}
+
+void FastSignal(byte *message, const char *name)
+{
+   int a;
+   asm volatile("int $112" : "=a"(a) : "0"(21), "b"((int)message), "c"((int)name));
 }
 

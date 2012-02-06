@@ -378,13 +378,15 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 	get_partition_table(device, &table, partition);
 	if(table.systemid != PARTITION_FS_VFAT)
 		return 0;
-
+   
 	//Initiate the nodes list
 	nodes_list = list_create();
 		
 	//Fetch the Boot Parameter Block ( BPB )
 	fat16_bpb_t *bpb = (fat16_bpb_t*)kmalloc(sizeof(fat16_bpb_t));
+    
 	read_hdd(device, table.relative_sector, (byte*)bpb, sizeof(fat16_bpb_t));
+   
 	bpb->relative_sector = table.relative_sector;
 	bpb->first_data_sector = bpb->reserved_sectors + 
 							(bpb->FATS * bpb->sectors_per_fat) +
@@ -413,7 +415,7 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 		
 	//Read all of the directory entries into a three structure. In that way you only need the root directory.
 	int root_directory = (bpb->reserved_sectors + (bpb->FATS * bpb->sectors_per_fat)) + table.relative_sector;
-	int root_size = (bpb->directory_entries * sizeof(fat16_dir_t)) + (bpb->directory_entries * sizeof(fat16_dir_longfilename_t));	
+	int root_size = (bpb->directory_entries * sizeof(fat16_dir_t)) + (bpb->directory_entries * sizeof(fat16_dir_longfilename_t));
 
     char *b = (char*)alloc(root_size);
 	read_hdd(device, root_directory, b, root_size);
@@ -423,7 +425,6 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 	{
 		fat16_dir_longfilename_t *ln = (fat16_dir_longfilename_t*)kmalloc(sizeof(fat16_dir_longfilename_t));
 		fat16_dir_t *dir = (fat16_dir_t*)kmalloc(sizeof(fat16_dir_t));
-		
 		//copy the contents
 		memcpy((byte*)ln, (byte*)(b + offset), sizeof(fat16_dir_longfilename_t));
 		offset += sizeof(fat16_dir_longfilename_t);

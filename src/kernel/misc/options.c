@@ -40,6 +40,7 @@ static int set_boot_device(char *val)
     if(val[0] != '(')
     {
         kprint("\n%s is not a valid boot device.\n", val);
+        for(;;);
         return 0;
     }
     id[0] = val[1]; //h - m
@@ -51,26 +52,30 @@ static int set_boot_device(char *val)
         //mount the device and set current_node
         ata_device_t ata;
         int channel = (int)val[3] - '0';
+     
         ata_mount(&ata, 0, channel); //Mount the device -> Needs improvement by detection etc
         if(ata.Type == ATA_DEVICE_INVALID)
         {
             kprint("\n%s is not a valid boot device.\n", val);
+            for(;;);
             return 0;
         }
        
         int partition = (int)val[5] - '0'; //4'th is a ,
+      
         fs_node_t *tmp = mount_fat16(&ata, partition);        
         if(!tmp) //Could not find a fat16 partition at 'partition'
         {
             kprint("\n%s is not a valid fat16 formatted partition.\n");
+            for(;;);
             return 0;
         }
-        
+       
         //Find the tmp and mount the fat16 partition
         fs_node_t *dev = finddir_fs(ramfs_root, "dev"); //If this fails, sigh!
         mounton_fs(dev, tmp); //Mount the fat16 node on dev - using MOUNTPOINT
         bin = finddir_fs(tmp, "bin");
-        current_node = tmp; //Set the current root directory
+        current_node = tmp; //Set the current root directory 
     }
     else if(strcmp(id, "mm")) //We use a HDD image as boot device
     {
@@ -80,7 +85,7 @@ static int set_boot_device(char *val)
         char name[64]; //temp name
         memcpy((char*)name, (char*)((uint) val + 5), strlen(val) - 7);
         name[strlen(val) - 7] = 0;
-
+        
         //find the image
         fs_node_t *image = finddir_fs(ramfs_root, name);
         if(!image)
@@ -92,9 +97,10 @@ static int set_boot_device(char *val)
         //Mount the ata device
         ata_device_t ata;
         ata_memory_mount(&ata, image); //mount at memory
-       
+        
         //Mount the fat16 partition on the memory device
         fs_node_t *tmp = mount_fat16(&ata, partition);
+        kprint("fat16 node name: %s\n", tmp->name);
         if(!tmp)
         {
             kprint("\n%s is not a valid fat16 partition.\n", val);
@@ -106,7 +112,7 @@ static int set_boot_device(char *val)
 
         //Set the current directory as well as the bin directory
         bin = finddir_fs(tmp, "bin");
-        current_node = tmp; //Current directory
+        current_node = ramfs_root;//tmp; //Current directory*/
     }
     else if(strcmp(id, "nn")) //none
     {
@@ -117,6 +123,7 @@ static int set_boot_device(char *val)
     else
     {
         kprint("\nCould not define the type of '%s'\n", val);
+        for(;;);
         return 0;
     }
     return 1;

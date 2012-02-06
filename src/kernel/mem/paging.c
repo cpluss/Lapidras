@@ -9,7 +9,6 @@ uint nframes; //number of total frames
 
 //defined in memory.c
 extern uint placement_address;
-extern heap_t *kheap;
 
 //function defined in functions.asm
 extern void copy_page_physical(uint src, uint dest);
@@ -116,28 +115,28 @@ void init_paging()
     //we create each page for the page areas that isn't going to be
     //identity mapped before we identity map, then allocate the page after the identity mapping
     //initialize the table for our precious memoryhandler
-    for(i = KHEAP_START; i < (KHEAP_START + KHEAP_SIZE); i += 0x1000)
+    for(i = KMEM_START; i < (KMEM_START + KMEM_SIZE); i += 0x1000)
 		get_page(i, 1, kernel_directory);
-    
+		
     //identity map!
     i = 0;
-    while(i < placement_address + 0x3000)
+    while(i < 0x400000)//= placement_address + 0x5000)
     {
 		alloc_frame(get_page(i, 1, kernel_directory), 0, 0); //kernel-mode
 		i += 0x1000;
     }
     
-    for(i = KHEAP_START; i < (KHEAP_START + KHEAP_SIZE); i += 0x1000)
+    for(i = KMEM_START; i < (KMEM_START + KMEM_SIZE); i += 0x1000)
 		alloc_frame(get_page(i, 1, kernel_directory), 0, 0);//1); //kernel-mode, rw
+		
+    //create the current heap, for our memory handler
+    mem_initialize();
     
     //register page fault handler
     register_interrupt_handler(14, &page_fault);
     
     //enable the actual paging
     switch_page_directory(kernel_directory);
-    
-    //create the current heap, for our memory handler
-    kheap = create_heap(KHEAP_START, KHEAP_SIZE);
     
     current_directory = clone_directory(kernel_directory);
     switch_page_directory(current_directory);
@@ -214,7 +213,7 @@ page_directory_t *clone_directory(page_directory_t *src)
 {
     uint phys;
     // Make a new page directory and obtain its physical address.
-    page_directory_t *dir = (page_directory_t*)kmalloc_real(sizeof(page_directory_t), 1, &phys);
+    page_directory_t *dir = (page_directory_t*)kmalloc_real(sizeof(page_directory_t), 1, &phys);	
     // Ensure that it is blank.
     memset(dir, 0, sizeof(page_directory_t));
 

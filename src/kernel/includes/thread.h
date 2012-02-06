@@ -63,7 +63,6 @@ int fork();				  //fork the process
 void WaitForThread(uint pid);
 
 void thread_set_state(thread_t *th, uint state);
-void thread_set_priority(uint priority);
 inline thread_t *CurrentThread();
 void make_thread_ready(thread_t *th);
 
