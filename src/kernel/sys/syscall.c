@@ -5,9 +5,17 @@
 //The syscall handler
 void syscall_handler(registers_t *regs);
 
-#define NUM_SYSCALLS 21
+#define NUM_SYSCALLS 22
 //All available syscalls right now
 uint num_syscalls = NUM_SYSCALLS;
+
+static void syscall_exit()
+{
+    asm volatile("sti");
+    exit();
+    for(;;); //Just incase
+}
+
 static void *syscalls[] =
 {
 	//Printing operations
@@ -43,7 +51,8 @@ static void *syscalls[] =
 	&LatestSignal,
 	&GetThread,
 	
-	&kbd_get_string
+	&kbd_get_string,
+    &syscall_exit //Exit current thread ..
 };
 
 void init_syscalls()

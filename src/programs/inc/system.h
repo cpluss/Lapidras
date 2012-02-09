@@ -78,6 +78,8 @@ extern int fread(byte *buffer, uint size, uint n, int handle);
 extern int fwrite(byte *buffer, uint size, uint n, int handle);
 extern int ftell_size(int handle);
 
+extern void exit();
+
 extern void *kmalloc(int sz);
 extern void kfree(void *memory);
 

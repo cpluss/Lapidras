@@ -8,8 +8,6 @@ struct thread;
 typedef struct signal
 {
 	char message[128];
-	int priority;
-	int priority_from;
 	int id;
 	
 	int from_pid;
@@ -22,7 +20,7 @@ void SendSignal(signal_t *s);
 signal_t *LatestSignal();
 void WaitForSignal();
 
-signal_t ComposeSignal(byte *message, int priority, uint from, uint to);
+signal_t ComposeSignal(byte *message, uint from, uint to);
 
 void FastSignal(byte *message, const char *name);
 void FastSignalP(byte *message, int pid);

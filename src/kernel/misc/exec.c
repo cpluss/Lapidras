@@ -11,16 +11,10 @@ typedef void (*call_t)(uint, char**);
 int exec(fs_node_t *path, int argc, char **argv)
 {
 	//first set the thread name
-	//strcpy(CurrentThread()->name, argv[0]);
-	/*
-    int handle = fopen(path);    
-    int n = ftell_size(handle);
-    if(n <= 0)
-		return 0;*/
+	strcpy(CurrentThread()->name, argv[0]);
 		
     //Read binary contents
     Elf32_Ehdr *ehdr = (Elf32_Ehdr*)kmalloc(path->length + 100);
-   // fread((byte*)ehdr, n, 1, handle);
     read_fs(path, 0, path->length, (byte*)ehdr);
     
     //Elf read, verify that it is an elf
@@ -28,7 +22,6 @@ int exec(fs_node_t *path, int argc, char **argv)
 	   ehdr->e_ident[2] != ELFMAG2 || ehdr->e_ident[3] != ELFMAG3)
     {
 		//It is not an elf
-		//fclose(handle);
 		free(ehdr);
 		return 2; //Not an elf header -> -1
     }
@@ -50,7 +43,6 @@ int exec(fs_node_t *path, int argc, char **argv)
 		{
 			l++;
 			//Allocate pages
-			//uint i;
 			for(i = 0; i < shdr->sh_size + 0x2000; i += 0x1000)
 			{
 				//doesn't reallocate -> allocating those who isn't allocated already..
@@ -72,40 +64,34 @@ int exec(fs_node_t *path, int argc, char **argv)
 	asm volatile("sti");
 	uint entry = (uint)ehdr->e_entry;
 	
-	free(ehdr);
-	//fclose(handle);
-	
+	free(ehdr);	
 	if(l == 0)
 	{
 		//no segments loaded, exit nice and peacefully..
 		return 2;
 	}
-	
+
 	call_t caller = (call_t)entry;
 	asm volatile("sti");
-	caller(argc, argv);
+    caller(argc, argv);
 	
 	return 1;
 }
 
 int system(fs_node_t *path, int argc, char **argv)
 {
-	int ret = fork();
-	if(ret == 0)
-	{ 
-		int r = exec(path, argc, argv);
-		
-		//Got to find a better wait to inform the parent of my death..
-		CurrentThread()->status = r;
-		exit();
-	}
-	else
-	{
-		volatile thread_t *child = GetThread(ret);
-		if(!child)
-			return -1;
-		strcpy(child->name, argv[0]);
-		while(child->state != DEAD) wait(10);
-		return child->status;
-	}
+    int ret = fork();
+    if(ret == 0)
+    {
+        int r = exec(path, argc, argv);
+        exit();
+    }
+    else
+    {
+        volatile thread_t *child = GetThread(ret);
+        if(!child)
+            return 0;
+        while(child->state != STATE_DEAD) wait(10);
+    }
+    return 1;
 }

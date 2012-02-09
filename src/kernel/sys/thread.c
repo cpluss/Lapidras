@@ -1,94 +1,65 @@
 #include "thread.h"
 #include "list.h"
 #include "memory.h"
+#include "paging.h"
 #include "cio.h"
 #include "event.h"
 
 extern page_directory_t *current_directory;
-extern virtual_console_t *current_console;
 
-volatile thread_t *current_thread;
-thread_t *idle_thread;
-uint next_pid = 1;
-uint current_priority = 0;
-uint enabled = 0;
-uint total_thread_count = 0;
-void set_mt(uint state)
-{
-	enabled = state;
-}
-
-list_t *thread_ready[2];
+list_t *thread_ready;
 list_t *thread_wait;
 list_t *thread_dead;
-list_t *thread_sleep;
 
-void idle_func()
-{
-	for(;;);
-}
+volatile thread_t *current_thread;
+uint next_pid = 1;
+
 void start_multithreading(uint esp)
 {
 	asm volatile("cli");	
-	thread_ready[0] = list_create();
-	thread_ready[1] = list_create();
-	thread_ready[2] = list_create();
+	thread_ready = list_create();
 	thread_wait = list_create();
 	thread_dead = list_create();
-	thread_sleep = list_create();
 	
 	//Create the initial task
 	current_thread = (thread_t*)kmalloc(sizeof(thread_t));
 	memset((byte*)current_thread, 0, sizeof(thread_t));
 	strcpy(current_thread->name, "kernel");
-	current_thread->priority = 0;
-	current_thread->state = RUNNABLE;
-	current_thread->id = next_pid++;
-	current_thread->esp_loc = esp;
+	current_thread->state = STATE_RUNNABLE;
+	current_thread->pid = next_pid++;
+	current_thread->base.stack = esp;
 	current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	current_thread->page_directory = current_directory;
-	current_thread->console = current_console;
 	current_thread->signal_queue = list_create();
-	
-	set_mt(1);
 	
 	asm volatile("sti");
 }
 
-thread_t *CreateThread(const char *name, uint eip, uint priority, uint state)
+thread_t *CreateThread(const char *name, uint eip, uint state)
 {	
 	asm volatile("cli");
 	thread_t *new = (thread_t*)kmalloc(sizeof(thread_t));
 	memset(new, 0, sizeof(thread_t)); 
 	
-	new->priority = priority;
 	new->ebp = 0;
 	new->eip = eip;
-	new->esp_loc = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
-	new->esp = new->esp_loc;
+	new->base.stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+	new->esp = new->base.stack;
 	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	
 	new->page_directory = clone_directory(current_directory);
 	
-	new->id = next_pid++;
+	new->pid = next_pid++;
 	strcpy(new->name, name);
 	new->signal_queue = list_create();
-	
-	/*
-	new->console = (virtual_console_t*)kmalloc(sizeof(virtual_console_t));
-	memset((byte*)new->console, 0, sizeof(virtual_console_t));
-	new->console->console_buffer = (char*)kmalloc(CONSOLE_BUFFER_SIZE);
-	new->console->y = 1;*/
-	
-	total_thread_count++;
 	
 	new->state = state;
 	switch(new->state)
 	{
-		case RUNNABLE:
+		case STATE_RUNNABLE:
 		make_thread_ready(new);
 		break;
-		case WAITING:
+		case STATE_WAITING:
 		list_insert(thread_wait, (void*)new);
 		break;
 	}
@@ -99,30 +70,21 @@ thread_t *CreateThread(const char *name, uint eip, uint priority, uint state)
 
 thread_t *GetThread(uint pid)
 {
-	if(current_thread->id == pid)
+	if(current_thread->pid == pid)
 		return (thread_t*)current_thread;
-	
-	//First search each ready list
-	int i = 0;
-	for(i = 0; i <= 2; i++)
+		
+	foreach(item_, thread_ready)
 	{
-		list_t *cl = thread_ready[i];
-		if(cl->length <= 0)
-			continue;
-			
-		foreach(item, cl)
-		{
-			thread_t *th = (thread_t*)item->value;
-			if(th->id == pid)
-				return th;
-		}
+		thread_t *th = (thread_t*)item_->value;
+		if(th->pid == pid)
+			return th;
 	}
 	
 	//Reached here -> we've not found anything at all.
 	foreach(item, thread_wait)
 	{
 		thread_t *th = (thread_t*)item->value;
-		if(th->id == pid)
+		if(th->pid == pid)
 			return th;
 	}
 		
@@ -133,20 +95,11 @@ thread_t *GetThreadByName(const char *name)
 	if(strcmp(current_thread->name, name))
 		return (thread_t*)current_thread;
 	
-	//First search each ready list
-	int i = 0;
-	for(i = 0; i <= 2; i++)
+	foreach(item_, thread_ready)
 	{
-		list_t *cl = thread_ready[i];
-		if(cl->length <= 0)
-			continue;
-			
-		foreach(item, cl)
-		{
-			thread_t *th = (thread_t*)item->value;
-			if(strcmp(th->name, name))
-				return th;
-		}
+		thread_t *th = (thread_t*)item_->value;
+		if(strcmp(th->name, name))
+			return th;
 	}
 	
 	//Reached here -> we've not found anything at all.
@@ -158,17 +111,8 @@ thread_t *GetThreadByName(const char *name)
 	}
 		
 	return 0;
-	return 0;
 }
 
-int _fork(uint priority)
-{
-	thread_t *parent = (thread_t*)current_thread;
-	int ret = fork();
-	if(ret != 0) //The child
-		GetThread(ret)->priority = priority;
-	return ret;
-}
 int fork()
 {
 	asm volatile("cli");
@@ -185,18 +129,13 @@ int fork()
 	//Allocate memory for the new thread -> the child
 	thread_t *new = (thread_t*)kmalloc(sizeof(thread_t));
 	memset((byte*)new, 0, sizeof(thread_t));
-	new->id = next_pid++;
-	new->priority = current_thread->priority;
-	new->state = RUNNABLE;
-	new->console = current_thread->console;
-	new->esp_loc = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+	new->pid = next_pid++;
+	new->state = STATE_RUNNABLE;
+	new->base.stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->page_directory = dir;
 	new->signal_queue = list_copy(current_thread->signal_queue);
 	new->parent = (thread_t*)current_thread;
-	
-	total_thread_count++;
-	make_thread_ready(new);
 	
 	//Read the current intstruction pointer
 	eip = read_eip();
@@ -205,7 +144,7 @@ int fork()
 		//Check the magic
 		if(magic != 0xDEADBEEF)
 		{
-			kprint("Bad fork() magic, current pid %i\n", current_thread->id);
+			kprint("Bad fork() magic, current pid %i\n", current_thread->pid);
 			asm volatile("cli");
 			for(;;);
 		}
@@ -213,30 +152,33 @@ int fork()
 		asm volatile("mov %%esp, %0" : "=r"(esp));
 		asm volatile("mov %%ebp, %0" : "=r"(ebp));
 		//Calculate the new bp and sp
-		if(current_thread->esp_loc > new->esp_loc)
+		if(current_thread->base.stack > new->base.stack)
 		{
-			new->esp = esp - (current_thread->esp_loc - new->esp_loc);
-			new->ebp = ebp - (current_thread->esp_loc - new->esp_loc);
+			new->esp = esp - (current_thread->base.stack - new->base.stack);
+			new->ebp = ebp - (current_thread->base.stack - new->base.stack);
 		}
 		else
 		{
-			new->esp = esp + (new->esp_loc - current_thread->esp_loc);
-			new->ebp = ebp - (current_thread->esp_loc - new->esp_loc);
+			new->esp = esp + (new->base.stack - current_thread->base.stack);
+			new->ebp = ebp - (current_thread->base.stack - new->base.stack);
 		}
 		//Copy the stack
-		memcpy((byte*)(new->esp_loc - KERNEL_STACK_SIZE), (byte*)(current_thread->esp_loc - KERNEL_STACK_SIZE), KERNEL_STACK_SIZE);
+		memcpy((byte*)(new->base.stack - KERNEL_STACK_SIZE), (byte*)(current_thread->base.stack - KERNEL_STACK_SIZE), KERNEL_STACK_SIZE);
 		//set the eip
 		new->eip = eip;
 		
+		//Insert into queue
+		make_thread_ready(new);
+		
 		asm volatile("sti");
-		return new->id;
+		return new->pid;
 	}
 	else
 	{
 		//Check the magic
 		if(magic != 0xDEADBEEF)
 		{
-			kprint("Bad fork() magic, current pid %i\n", current_thread->id);
+			kprint("Bad fork() magic, current pid %i\n", current_thread->pid);
 			asm volatile("cli");
 			for(;;);
 		}
@@ -255,73 +197,36 @@ thread_t *get_next_thread()
 			thread_t *n = (thread_t*)item->value;
 			if(!n)
 				continue;
-			if(n->state == RUNNABLE || !QueueIsEmpty(n))
+			if(n->state == STATE_RUNNABLE || !QueueIsEmpty(n))
 			{
-				if(current_priority > n->priority)
-				{
-					notify_event(EVENT_THREAD_WAKE, (void*)n);
-					current_priority = n->priority;
-					n->state = RUNNABLE;
-					list_delete(thread_wait, item);
-					return n;
-					break;
-				}
+				notify_event(EVENT_THREAD_WAKE, (void*)n);
+				n->state = STATE_RUNNABLE;
+				list_delete(thread_wait, item);
+				return n;
+				break;
 			}
 		}
 	}
 	
-	//In case this is the only running thread in a que, and it's high prioritised.
-	if(thread_ready[current_priority]->length == 0 && current_thread->state == DEAD)
-	{
-		if(current_priority < 2)
-			current_priority++;
-		else
-			return (thread_t*)current_thread;
-		return get_next_thread();
-	}
-	/*
-	if(thread_ready[current_priority]->length == 1 && current_thread->priority == 2)
-		return (thread_t*)current_thread;*/
-		
-	node_t *np = list_dequeue(thread_ready[current_priority]);
-	if(!np) //no thread in this que, increase the priority
-	{
-		if(current_priority < 2)
-			current_priority++;
-		else
-			return (thread_t*)current_thread; //Don't perform a switch in case we reach the final..
-		
-		return get_next_thread();
-	}
+	if(thread_ready->length == 0)
+		return (thread_t*)current_thread;
 	
+		
+	node_t *np = list_dequeue(thread_ready);
 	thread_t *ret = (thread_t*)np->value;
-	if(!ret) //do as same as above
-	{
-		notify_event(EVENT_THREAD_CORRUPT, (void*)np);
-		
-		if(current_priority < 2)
-			current_priority++;
-		if(thread_ready[current_priority]->length == 0)
-			return (thread_t*)current_thread; //Don't perform a switch in case we reach the final..
-		
-		return get_next_thread();
-	}
 	free((void*)np);
-	if(ret->state != RUNNABLE)
+	if(ret->state != STATE_RUNNABLE)
 	{
-		if(ret->state == DEAD || ret->state == SLEEPING)
+		if(ret->state == STATE_DEAD)
 		{
 			notify_event(EVENT_THREAD_DIE, (void*)ret);
 			list_insert(thread_dead, (void*)ret);
 		}
-		if(ret->state == WAITING)
+		if(ret->state == STATE_WAITING)
 		{
 			notify_event(EVENT_THREAD_WAIT, (void*)ret);
 			list_insert(thread_wait, (void*)ret);
 		}
-			
-		if(current_priority == 2)
-			return (thread_t*)current_thread;
 			
 		return get_next_thread();
 	}
@@ -345,13 +250,7 @@ void free_dead_threads()
 			continue;
 		if(th)
 		{
-			if(th->state == SLEEPING)
-			{
-				list_insert(thread_sleep, (void*)th);
-				continue;
-			}
-			
-			free((void*)(th->esp_loc - KERNEL_STACK_SIZE));
+			free((void*)(th->base.stack - KERNEL_STACK_SIZE));
 			free((void*)(th->esp0 - KERNEL_STACK_SIZE));
 			free(th->page_directory);
 			
@@ -365,10 +264,8 @@ void free_dead_threads()
 }
 void schedule()
 {
-	if(next_pid <= 2 || !enabled)
+	if(!current_thread)
 		return;
-	if(current_thread->timeslice > 0)
-		current_thread->timeslice--;
 		
 	uint esp, ebp, eip;
 	asm volatile("mov %%esp, %0" : "=r"(esp));
@@ -385,25 +282,12 @@ void schedule()
 	thread_t *last = (thread_t*)current_thread;
 	thread_t *tmp = get_next_thread();
 	if(tmp == last)
-		return;
-	if(current_thread->state != RUNNABLE)
-	{
-		if(current_thread->state == WAITING)
-		{
-			notify_event(EVENT_THREAD_WAIT, (void*)current_thread);
-			list_insert(thread_wait, (thread_t*)current_thread);
-		}
-		else if(current_thread->state == DEAD || current_thread->state == SLEEPING)
-		{
-			notify_event(EVENT_THREAD_DIE, (void*)current_thread);
-			list_insert(thread_dead, (thread_t*)current_thread);
-		}
-		
-	}	
-	if(current_thread->state == RUNNABLE)
-		make_thread_ready((thread_t*)current_thread);
+        return;
+        
+	make_thread_ready((thread_t*)current_thread);
 	//Free the dead threads running
 	free_dead_threads();
+
 	_switch(tmp);
 }
 void _switch(thread_t *new)
@@ -416,8 +300,6 @@ void _switch(thread_t *new)
 	esp = current_thread->esp;
 	ebp = current_thread->ebp;
 	eip = current_thread->eip;
-	
-	//set_console(current_thread->console, 0);
 	
 	notify_event(EVENT_THREAD_SWITCH, (void*)current_thread);
 	set_kernel_stack(current_thread->esp0);
@@ -436,26 +318,13 @@ void _switch(thread_t *new)
 
 void kill_thread(thread_t *th)
 {
-	if(th->state == SLEEPING)
-	{
-		foreach(item, thread_sleep)
-		{
-			thread_t *t = (thread_t*)item->value;
-			if(t->id == th->id)
-			{
-				list_delete(thread_sleep, item);
-				free(item);
-				break;
-			}
-		}
-	}
-	th->state = DEAD;
+	th->state = STATE_DEAD;
 	list_insert(thread_dead, (void*)th);
 }
 
 int GetPID()
 {
-	return current_thread->id;
+	return current_thread->pid;
 }
 inline thread_t *CurrentThread()
 {
@@ -463,28 +332,22 @@ inline thread_t *CurrentThread()
 }
 void make_thread_ready(thread_t *th)
 {
-	th->timeslice = ORIG_TIMESLICE;
-	list_insert(thread_ready[th->priority], (void*)th);
+	list_insert(thread_ready, (void*)th);
 }
 void thread_set_state(thread_t *th, uint state)
 {
 	th->state = state;
 }
-void thread_set_priority(uint priority)
-{
-	CurrentThread()->priority = priority;
-	while(current_priority == priority);
-}
 void exit()
 {
 	asm volatile("cli");
 	//Remove it from the current que and set the status to DEAD
-	thread_set_state(CurrentThread(), DEAD);
+	thread_set_state(CurrentThread(), STATE_DEAD);
 	asm volatile("sti");
 	for(;;); //Never return
 }
 
 uint get_thread_count()
 {
-	return thread_ready[0]->length + thread_ready[1]->length + thread_ready[2]->length + thread_wait->length + 1;
+	return thread_ready->length + thread_wait->length + 1;
 }

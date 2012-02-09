@@ -207,9 +207,8 @@ void kread(char *buffer)
 	asm volatile("int $112" : "=a"(a) : "0"(20), "b"((int)buffer));
 }
 
-void FastSignal(byte *message, const char *name)
+void exit()
 {
-   int a;
-   asm volatile("int $112" : "=a"(a) : "0"(21), "b"((int)message), "c"((int)name));
+	int a;
+	asm volatile("int $112" : "=a"(a) : "0"(21));
 }
-

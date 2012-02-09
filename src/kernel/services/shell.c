@@ -21,7 +21,7 @@ static void shell_proc(int argc, char **argv)
 	thread_t *th;
 	kprint("----------------------------------------------------------------\n");
 	kprint("There are %i threads running.\n", get_thread_count());
-	kprint("name\t\tpid\t\tpriority\t\tstate\n");
+	kprint("name\t\tpid\t\tstate\n");
 	kprint("----------------------------------------------------------------\n");
 	int n = 0;
 	while(n != get_thread_count())
@@ -29,7 +29,7 @@ static void shell_proc(int argc, char **argv)
 		char *states[5] = { "DEAD", "RUNNABLE", "WAITING", "SLEEPING" };
 		if((th = GetThread(i)) != 0)
 		{
-			kprint("%s\t\t%i\t\t%i\t\t\t%s\n", th->name, th->id, th->priority, states[th->state]);
+			kprint("%s\t\t%i\t\t\t%s\n", th->name, th->pid, states[th->state]);
 			n++;
 		}
 		i++;
@@ -153,6 +153,10 @@ static void shell_mem(int argc, char **argv)
 	else if(strcmp(argv[1], "list"))
 		list_blocks();
 }
+static void shell_clean(int argc, char **argv)
+{
+    clear_screen();
+}
 
 int shell_find(int argc, char **argv)
 {
@@ -187,6 +191,7 @@ void shell_init()
 	register_command("dir", &shell_dir);
 	register_command("ls", &shell_ls);
     register_command("mem", &shell_mem);
+    register_command("clear", &shell_clean);
 }
 void shell()
 {
@@ -231,7 +236,7 @@ void shell()
 			}
 		}
 		
-		int ret = exec(node, tokenid, argv);
+		int ret = system(node, tokenid, argv);
 		if(ret == 0)
 			kprint("Could not file %s\n", cmd);
 		else if(ret == 2)

@@ -10,7 +10,7 @@ void WaitForSignal()
 {
 	//Wait this current thread for a single signal
 	asm volatile("cli");	//No interrupt atm !
-	thread_set_state(CurrentThread(), WAITING);
+	thread_set_state(CurrentThread(), STATE_WAITING);
 	//Wait infinitely
 	asm volatile("sti"); //Enable them again as these changes have been made
 	while(QueueIsEmpty(CurrentThread()));
@@ -54,9 +54,8 @@ void FastSignal(byte *message, const char *name)
 	signal_t *signal = (signal_t*)kmalloc(sizeof(signal_t));
 	memset((byte*)signal, 0, sizeof(signal_t));
 	strcpy(signal->message, message);
-	signal->to_pid = th->id;
+	signal->to_pid = th->pid;
 	signal->from_pid = GetPID();
-	signal->priority = th->priority;
 		
 	list_insert(th->signal_queue, (void*)signal);
 	
@@ -75,20 +74,18 @@ void FastSignalP(byte *message, int pid)
 	signal_t *signal = (signal_t*)kmalloc(sizeof(signal_t));
 	memset((byte*)signal, 0, sizeof(signal_t));
 	strcpy(signal->message, message);
-	signal->to_pid = th->id;
+	signal->to_pid = th->pid;
 	signal->from_pid = GetPID();
-	signal->priority = th->priority;
 		
 	list_insert(th->signal_queue, (void*)signal);
 	
 	asm volatile("sti");
 }
 
-signal_t ComposeSignal(byte *message, int priority, uint from, uint to)
+signal_t ComposeSignal(byte *message, uint from, uint to)
 {
 	signal_t sig;
 	strcpy(sig.message, message);
-	sig.priority = priority;
 	sig.from_pid = from;
 	sig.to_pid = to;
 	return sig;

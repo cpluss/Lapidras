@@ -180,8 +180,8 @@ void kbd_get_string(char *b)
 	//Begin to listen
 	begin_listen(b);
 	//Go into the waiting state.
-	thread_set_state(CurrentThread(), WAITING);
-	while(CurrentThread()->state == WAITING); //Wait for the string to complete
+	thread_set_state(CurrentThread(), STATE_WAITING);
+	while(CurrentThread()->state == STATE_WAITING); //Wait for the string to complete
 	stop_listen();
 	
 	remove_backspace_point();
@@ -256,7 +256,7 @@ static void kbd_handler(registers_t *regs)
 				kputc('\n');
 				
 				//Wake the thread from its sleep
-				thread_set_state(l->th, RUNNABLE);
+				thread_set_state(l->th, STATE_RUNNABLE);
 			}
 		}	
 	}
