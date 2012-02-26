@@ -1,121 +1,94 @@
 #include "system.h"
 #include "string.h"
 
-int kputs(char *s)
+void puts(char *buffer)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(0), "b"((int)s));
-	return a;
+	int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(0), "b"((int)buffer));
 }
-int kputc(char c)
+void putc(char c)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(1), "b"((int)c));
+	int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(1), "b"((int)c));
 }
-
-int SendSignal(signal_t *s)
+void gets(char *buffer)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(2), "b"((int)s));
-	return a;
-}
-signal_t *LatestSignal()
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(5));
-	return (signal_t*)a;
-}
-void WaitForSignal()
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(17));
+	int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(2), "b"((int)buffer));
 }
 
 int GetPID()
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(3));
-	return a;
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(3));
+    return ret;
 }
 
-thread_t *GetThreadByName(const char *name)
+int fopen(const char *name)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(4), "b"((int)name));
-	return (thread_t*)a;
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(4), "b"((int)((char*)name)));
+    return ret;
 }
-thread_t *GetThread(uint id)
+void fclose(int n)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(19), "b"(id));
-	return (thread_t*)a;
+	int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(5), "b"(n));
 }
-
-thread_t *CreateThread(const char *name, void (*thread)(), uint priority, uint idle)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(5), "b"((int)name), "c"((int)thread), "d"(priority), "S"(idle));
-	return (thread_t*)a;
-}
-
-thread_t *CurrentThread()
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(6));
-	return (thread_t*)a;
-}
-
-int QueueIsEmpty(thread_t *th)
-{
-    int a;
-    asm volatile("int $112" : "=a"(a) : "0"(22), "b"((int)th));
-    return a;
-}
-
-int fopen(const char *path)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(7), "b"((int)path));
-	return a;
-}
-void fclose(int handle)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(8), "b"(handle));
-}
-
 int fread(byte *buffer, uint size, uint n, int handle)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(9), "b"((int)buffer), "c"((int)size), "d"((int)n), "S"(handle));
-	return a;
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(6), "b"((int)buffer), "c"(size), "d"(n), "S"(handle));
+    return ret;
 }
-int fwrite(byte *buffer, uint size, uint n, int handle)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(10), "b"((int)buffer), "c"(size), "d"(n), "S"(handle));
-	return a;
-}
+//fwrite - 7
 int ftell_size(int handle)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(11), "b"(handle));
-	return a;
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(8), "b"(handle));
+    return ret;
 }
 
-void *kmalloc(int sz)
+void *malloc(int sz)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(12), "b"(sz));
-	return (void*)a;
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(9), "b"(sz));
+    return (void*)ret;
 }
-void kfree(void *memory)
+void free(void *p)
 {
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(13), "b"((int)memory));
+	int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(10), "b"((int)p));
 }
 
-void kprint(char *s, ...)
+int gettick()
+{
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(11));
+    return ret;
+}
+
+void exit()
+{
+	int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(12));
+}
+
+void execve(const char *path)
+{
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(15), "b"((int)path));
+}
+
+
+uint GetThread(const char *name)
+{
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(16), "b"((int)name));
+    return ret;
+}
+
+void printf(char *s, ...)
 {
 	va_list ap;
 	int i, n, j = 0;
@@ -133,19 +106,19 @@ void kprint(char *s, ...)
 				case 'c':
 				{
 					char c = va_arg(ap, int);
-					kputc(c);
+					putc(c);
 				}
 				case 's':
 				{
 					char *str = va_arg(ap, char*);
 					for(j = 0; j < strlen(str); j++)
-						kputc(str[j]);
+						putc(str[j]);
 				}break;
 				case 'i':
 				{
 					int num = va_arg(ap, int);
 					if(num == 0)
-						kputc('0');
+						putc('0');
 					else
 					{
 						char c[32];
@@ -159,7 +132,7 @@ void kprint(char *s, ...)
 						c[j] = 0; //null terminator
 						
 						while(j >= 0)
-							kputc(c[j--]);
+							putc(c[j--]);
 					}
 				}break;
 				case 'x':
@@ -171,44 +144,15 @@ void kprint(char *s, ...)
 					for(j = 28; j > -1; j -= 4)
 					{
 						char o = hexarray[(num >> j) & 0xF];
-						kputc(hexarray[(num >> j) & 0xF]);
+						putc(hexarray[(num >> j) & 0xF]);
 					}
 				}break;
 			}
 		}
 		else
-			kputc(s[i]);
+			putc(s[i]);
 	}
 	
 	va_end(ap);
 }
 
-void register_event(ushort type, evt_t handler)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(15), "b"((int)type), "c"((int)handler));
-}
-void unregister_event(ushort type, evt_t handler)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(16), "b"((int)type), "c"((int)handler));
-}
-
-char *buf;
-void kbd_handle_read(void *param)
-{
-	char c = *(char*)param;
-	kprint("Character '%c' read.\n", c);
-}
-
-void kread(char *buffer)
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(20), "b"((int)buffer));
-}
-
-void exit()
-{
-	int a;
-	asm volatile("int $112" : "=a"(a) : "0"(21));
-}

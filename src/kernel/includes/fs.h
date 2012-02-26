@@ -3,6 +3,7 @@
 #include "types.h"
 
 struct fs_node;
+struct ata_device;
 
 typedef uint (*read_type_t)(struct fs_node*, uint, uint, byte*);
 typedef uint (*write_type_t)(struct fs_node*, uint, uint, byte*);

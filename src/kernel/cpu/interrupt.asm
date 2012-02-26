@@ -77,6 +77,7 @@ IRQ 15, 47
 
 ;the c isr handler
 [extern isr_handler]
+[extern stack_traverse]
 ;function isr_common_stub
 ;purpose: all isr handlers call this stub, which then redirects us to the proper isr defined in c
 ;returns: nothing
@@ -103,7 +104,7 @@ isr_common_stub:
     popa 		;restore registers
     add esp, 8
     sti
-    iret		;pop 5 things at onec: cs, eip, eflags, ss, and esp
+    iret		;pop 5 things at once: eip, cs, eflags, esp, ss
 
 ;handler to handle a irq call
 [extern irq_handler]

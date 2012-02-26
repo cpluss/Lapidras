@@ -2,10 +2,10 @@
 
 void main(int argc, char *argv[])
 {
-	kprint("Enter string: ");
-	char *buf = (char*)kmalloc(64);
-	kread(buf);
-	kprint("You wrote '%s'\n", buf);
-	kfree(buf);
+	printf("Enter string: ");
+	char *buf = (char*)malloc(64);
+	gets(buf);
+	printf("You wrote '%s'\n", buf);
+	free(buf);
 	return;
 }

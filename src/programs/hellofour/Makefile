@@ -6,7 +6,7 @@ CC = cc -I../inc
 CFLAGS = -nostdlib -nostdinc -fno-builtin -ffreestanding
 
 C_FILES = $(shell find *.c)
-OBJ_FILES = $(patsubst %.c,%.o,$(C_FILES)) ../clib/system.o ../clib/string.o
+OBJ_FILES = $(patsubst %.c,%.o,$(C_FILES)) ../clib/system.o ../clib/string.o ../clib/start.o
 
 OUT_NAME = hellofour
 

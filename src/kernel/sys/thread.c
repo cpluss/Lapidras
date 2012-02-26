@@ -29,6 +29,7 @@ void start_multithreading(uint esp)
 	current_thread->pid = next_pid++;
 	current_thread->base.stack = esp;
 	current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+    set_kernel_stack(current_thread->esp0);
 	current_thread->page_directory = current_directory;
 	current_thread->signal_queue = list_create();
 	
@@ -144,7 +145,7 @@ int fork()
 		//Check the magic
 		if(magic != 0xDEADBEEF)
 		{
-			kprint("Bad fork() magic, current pid %i\n", current_thread->pid);
+			kprint("Bad fork() magic, current pid %i (parent)\n", current_thread->pid);
 			asm volatile("cli");
 			for(;;);
 		}
@@ -164,6 +165,15 @@ int fork()
 		}
 		//Copy the stack
 		memcpy((byte*)(new->base.stack - KERNEL_STACK_SIZE), (byte*)(current_thread->base.stack - KERNEL_STACK_SIZE), KERNEL_STACK_SIZE);
+        
+        //Systemcall?
+        if(current_thread->syscall_registers != 0)
+        {
+            uint o_stack = ((uint)current_thread->base.stack - KERNEL_STACK_SIZE);
+            uint n_stack = ((uint)new->base.stack - KERNEL_STACK_SIZE);
+            uint offset = ((uint)current_thread->syscall_registers - o_stack);
+            new->syscall_registers = (registers_t*)(n_stack + offset);
+        }
 		//set the eip
 		new->eip = eip;
 		
@@ -178,9 +188,8 @@ int fork()
 		//Check the magic
 		if(magic != 0xDEADBEEF)
 		{
-			kprint("Bad fork() magic, current pid %i\n", current_thread->pid);
-			asm volatile("cli");
-			for(;;);
+			kprint("Bad fork() magic, current thread %s(%i) (child)\n", current_thread->name, current_thread->pid);
+			exit();
 		}
 		return 0;
 	}

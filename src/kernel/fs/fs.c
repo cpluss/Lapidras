@@ -1,4 +1,5 @@
 #include "fs.h"
+#include "list.h"
 
 uint read_fs(fs_node_t *node, uint offset, uint size, byte *buffer)
 {

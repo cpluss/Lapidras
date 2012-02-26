@@ -4,8 +4,8 @@
 #sudo losetup -o 32256 /dev/loop0 bin/hdd.img
 
 #fat12/16
-#sudo losetup -o 1048576 /dev/loop0 bin/hdd_32.img
-sudo losetup -o 512 /dev/loop0 bin/test.img
+sudo losetup -o 1048576 /dev/loop0 bin/hdd_32.img
+#sudo losetup -o 512 /dev/loop0 bin/test.img
 sudo mount /dev/loop0 bin/mnt
 sudo cp bin/kernel.bin bin/mnt/boot/
 sudo cp src/initrd/initrd bin/mnt/boot/

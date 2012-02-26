@@ -1,6 +1,7 @@
 #ifndef THREAD_H
 #define THREAD_H
 #include "types.h"
+#include "isr.h"
 #include "list.h"
 #include "paging.h"
 #include "signal.h"
@@ -17,6 +18,7 @@ typedef struct image
 	uint stack;
 	uint user_stack;
 	uint start;
+	uint entry;
 } image_t;
 
 typedef struct thread
@@ -27,13 +29,16 @@ typedef struct thread
 	uint ebp;
 	uint eip;
 	
+    uint state;
+
 	page_directory_t *page_directory;
 	
 	image_t base;
 	char name[16];
 	list_t *signal_queue;
-	uint state;
+	//uint state;
 	
+    registers_t *syscall_registers;
 	struct thread *parent;
 } thread_t;
 

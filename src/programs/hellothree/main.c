@@ -1,8 +1,7 @@
 #include "system.h"
 
-void main(int argc, char *argv[])
+void main()
 {
-	kprint("Hello, that's me!\n");
-	exit();
+	printf("Hello, that's me!\n");
 	return;
 }

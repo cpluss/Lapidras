@@ -25,7 +25,6 @@ void print_log_end(const char *s)
 	kprint("]\n");
 }
 
-
 int kmain(multiboot_t *multiboot, uint esp)
 {
     //setup the screen
@@ -86,8 +85,7 @@ int kmain(multiboot_t *multiboot, uint esp)
         print_log_end("FAIL");
     else
         print_log_end("OK");
-    
-    //shell();
+
     CreateThread("shell", (uint)shell, STATE_RUNNABLE);
     exit();
 

@@ -28,6 +28,32 @@ _start:
 stop:
 	jmp stop
 	
+global gousermode
+gousermode:
+    cli
+    pop edx
+    
+    xor eax, eax
+    mov ax, 0x23    ;Set the usermode context
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    
+    push 0x23       ;SS
+    
+    mov eax, esp
+    add eax, 12     ;Correct the stack
+    push eax        ;Stack
+    pushfd          ;eflags
+    pop eax         ;pop flags
+    or eax, 0x200   ;Enable interrupts ...
+    push eax        ;Push flags again
+    
+    push 0x1b       ;CS 
+    push edx        ;EIP
+    iret
+
 section .bss
 stack:
 	resb 0x1000

@@ -127,7 +127,7 @@ void init_paging()
     }
     
     for(i = KMEM_START; i < (KMEM_START + KMEM_SIZE); i += 0x1000)
-		alloc_frame(get_page(i, 1, kernel_directory), 0, 0);//1); //kernel-mode, rw
+		alloc_frame(get_page(i, 1, kernel_directory), 0, 1); //kernel-mode, rw
 		
     //create the current heap, for our memory handler
     mem_initialize();
@@ -289,7 +289,7 @@ void page_fault(registers_t *regs)
     if(rw)
 		kprint("\tRead write operation\n");
     if(user)
-		kprint("\tUser mode\n");
+		kprint("\tUsermode\n");
     if(reserved)
 		kprint("\tOverwrite protected cpu-reserved bits.\n");
     if(id)

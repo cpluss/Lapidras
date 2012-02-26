@@ -2,6 +2,9 @@
 #include "thread.h"
 #include "cio.h"
 
+//The current thread, externally declared ..
+extern volatile thread_t *current_thread;
+
 //The syscall handler
 void syscall_handler(registers_t *regs);
 
@@ -15,19 +18,37 @@ static void syscall_exit()
     exit();
     for(;;); //Just incase
 }
+extern fs_node_t *current_node;
+static void syscall_system(const char *name, int argc, char **argv)
+{
+    fs_node_t *node = finddir_fs(current_node, (char*)name);
+    if(node)
+        system(node, argc, argv);
+}
+
+void syscall_execve_prototype()
+{
+    fs_node_t *node = finddir_fs(current_node, (char*)CurrentThread()->name);
+    if(!node)
+        exit();
+    char *argv[] = { "test", NULL };
+    exec(node, 1, argv);
+    exit();
+}
+static void syscall_execve(const char *name)
+{
+    thread_t *th = CreateThread(name, (uint)syscall_execve_prototype, STATE_RUNNABLE);
+    while(th->state != STATE_DEAD) wait(10); 
+}
 
 static void *syscalls[] =
 {
 	//Printing operations
 	&kputs,					//kputs - prints a string to the screen
 	&kputc,					//kputc - prints a character to the screen
+    &kbd_get_string,        //kbd_get_string - reads a string to a buffer
 	
-	//Thread operations
-	&SendSignal,			//SendSignal - sends a signal
 	&GetPID,				//GetPID - gets the current pid
-	&GetThreadByName,		//GetThreadByName - gets a thread by name
-	&CreateThread,			//CreateThread - creates a new thread
-	&CurrentThread,			//CurrentThread - gets the current thread
 	
 	//IO - Operations
 	&fopen,					//fopen - opens a file handle
@@ -42,17 +63,13 @@ static void *syscalls[] =
 	
 	//Get the current system tick
 	&gettick,
-	
-	//User input
-	&register_event,		//read a string from the user
-	&unregister_event,
-	
-	&WaitForSignal,
-	&LatestSignal,
-	&GetThread,
-	
-	&kbd_get_string,
-    &syscall_exit //Exit current thread ..
+	&syscall_exit, //Exit current thread ..
+    
+    //Thread operations
+    &syscall_system,        //Launch INTO a new process
+    &fork,                  //Fork .. no need for an explanation
+    &syscall_execve,        //Execve - create a new thread with a different executable
+    &GetThreadByName,
 };
 
 void init_syscalls()
@@ -71,6 +88,9 @@ void syscall_handler(registers_t *regs)
 	//get the syscall function
 	void *location = syscalls[regs->eax];
 	
+    //Set the current threads syscall registers
+    current_thread->syscall_registers = regs;
+
 	//we have no idea what the parameters is for every
 	//syscall, use all parameters available
 	int ret;
@@ -89,5 +109,7 @@ void syscall_handler(registers_t *regs)
 		pop %%ebx; \
 		pop %%ebx;"
 			: "=a"(ret) : "r"(regs->edi), "r"(regs->esi), "r"(regs->edx), "r"(regs->ecx), "r"(regs->ebx), "r"(location));
-	regs->eax = ret;
+	//In case the thread changed it's stack ( fork .. )
+    regs = current_thread->syscall_registers;
+    regs->eax = ret;
 }

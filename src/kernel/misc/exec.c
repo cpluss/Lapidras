@@ -5,13 +5,22 @@
 #include "elf.h"
 
 extern page_directory_t *current_directory;
+extern volatile thread_t *current_thread;
 typedef void (*call_t)(uint, char**);
 #define UCODE_START 0x400000
 
+int execd(fs_node_t *path, int argc, char **argv)
+{
+    return exec_(path, argc, argv, 0);
+}
 int exec(fs_node_t *path, int argc, char **argv)
 {
-	//first set the thread name
-	strcpy(CurrentThread()->name, argv[0]);
+    return exec_(path, argc, argv, 1);
+}
+int exec_(fs_node_t *path, int argc, char **argv, int um)
+{
+    //first set the thread name
+    strcpy(CurrentThread()->name, argv[0]);
 		
     //Read binary contents
     Elf32_Ehdr *ehdr = (Elf32_Ehdr*)kmalloc(path->length + 100);
@@ -36,17 +45,24 @@ int exec(fs_node_t *path, int argc, char **argv)
 
     //Lead the loadable segments from the binary
     uint x, l = 0;
+    current_thread->base.entry = 0xFFFFFFFF;
     for(x = 0; x < ehdr->e_shentsize * ehdr->e_shnum; x += ehdr->e_shentsize)
     {
 		Elf32_Shdr *shdr = (Elf32_Shdr*)((uint)ehdr + (ehdr->e_shoff + x));
 		if(shdr->sh_addr) //loadable section or not
 		{
 			l++;
+            if(shdr->sh_addr < current_thread->base.entry)
+            {
+                current_thread->base.entry = shdr->sh_addr;
+            }
+            if(shdr->sh_addr + shdr->sh_size - current_thread->base.entry > current_thread->base.size)
+                current_thread->base.size = shdr->sh_addr + shdr->sh_size - current_thread->base.entry;
 			//Allocate pages
 			for(i = 0; i < shdr->sh_size + 0x2000; i += 0x1000)
 			{
 				//doesn't reallocate -> allocating those who isn't allocated already..
-				alloc_frame(get_page(shdr->sh_addr + i, 1, current_directory), 0, 0); //1);
+				alloc_frame(get_page(shdr->sh_addr + i, 1, current_directory), 0, 1);
 			}
 			
 			if(shdr->sh_type == SHT_NOBITS) //Is it the .bss?
@@ -70,11 +86,12 @@ int exec(fs_node_t *path, int argc, char **argv)
 		//no segments loaded, exit nice and peacefully..
 		return 2;
 	}
-
+	if(um)
+	    gousermode();
 	call_t caller = (call_t)entry;
-	asm volatile("sti");
-    caller(argc, argv);
-	
+	//asm volatile("sti");
+	caller(argc, argv);
+	//We will never reach this point ;)
 	return 1;
 }
 
@@ -91,6 +108,7 @@ int system(fs_node_t *path, int argc, char **argv)
         volatile thread_t *child = GetThread(ret);
         if(!child)
             return 0;
+        //This is a VERY bad way ...
         while(child->state != STATE_DEAD) wait(10);
     }
     return 1;

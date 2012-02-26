@@ -128,6 +128,14 @@ static int set_boot_device(char *val)
     }
     return 1;
 }
+static int set_keymap(char *val)
+{
+    if(strcmp(val, "qwerty"))
+        set_qwerty();
+    else
+        set_dvorak();
+    return 1;
+}
 
 static void get_options(char *opts, char **out, int *argc)
 {
@@ -150,7 +158,8 @@ static void init_opts()
 {
     //Set the current working directory upon start
     add_opt("set wd", &set_working_dir);
-    add_opt("set boot", &set_boot_device); 
+    add_opt("set boot", &set_boot_device);
+    add_opt("keymap", &set_keymap);
 }
 
 static uint parse_opt(char *opt)
