@@ -74,6 +74,12 @@ void exit()
     asm volatile("int $112" : "=a"(ret) : "0"(12));
 }
 
+int fork()
+{
+    int ret;
+    asm volatile("int $112" : "=a"(ret) : "0"(14));
+    return ret;
+}
 void execve(const char *path)
 {
     int ret;

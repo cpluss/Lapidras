@@ -28,7 +28,8 @@ void start_multithreading(uint esp)
 	current_thread->state = STATE_RUNNABLE;
 	current_thread->pid = next_pid++;
 	current_thread->base.stack = esp;
-	current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+    current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+    current_thread->base.kernel_stack = current_thread->esp0;
     set_kernel_stack(current_thread->esp0);
 	current_thread->page_directory = current_directory;
 	current_thread->signal_queue = list_create();
@@ -46,8 +47,9 @@ thread_t *CreateThread(const char *name, uint eip, uint state)
 	new->eip = eip;
 	new->base.stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->esp = new->base.stack;
-	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
-	
+	new->base.kernel_stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+	new->esp0 = new->base.kernel_stack;
+
 	new->page_directory = clone_directory(current_directory);
 	
 	new->pid = next_pid++;
@@ -120,13 +122,13 @@ int fork()
 	//The pointers to store
 	uint ebp, eip, esp;
 	uint magic = 0xDEADBEEF;
-	
+
 	//Save the parent, cause we fork -> the parent continues the work..
 	thread_t *parent = (thread_t*)current_thread;
-	
+
 	//Copy the current page directory
 	page_directory_t *dir = clone_directory(current_directory);
-	
+
 	//Allocate memory for the new thread -> the child
 	thread_t *new = (thread_t*)kmalloc(sizeof(thread_t));
 	memset((byte*)new, 0, sizeof(thread_t));
@@ -137,7 +139,7 @@ int fork()
 	new->page_directory = dir;
 	new->signal_queue = list_copy(current_thread->signal_queue);
 	new->parent = (thread_t*)current_thread;
-	
+
 	//Read the current intstruction pointer
 	eip = read_eip();
 	if(current_thread == parent)
@@ -165,7 +167,7 @@ int fork()
 		}
 		//Copy the stack
 		memcpy((byte*)(new->base.stack - KERNEL_STACK_SIZE), (byte*)(current_thread->base.stack - KERNEL_STACK_SIZE), KERNEL_STACK_SIZE);
-        
+				
         //Systemcall?
         if(current_thread->syscall_registers != 0)
         {
@@ -176,16 +178,16 @@ int fork()
         }
 		//set the eip
 		new->eip = eip;
-		
+
 		//Insert into queue
 		make_thread_ready(new);
-		
+
 		asm volatile("sti");
 		return new->pid;
 	}
 	else
 	{
-		//Check the magic
+	    //Check the magic
 		if(magic != 0xDEADBEEF)
 		{
 			kprint("Bad fork() magic, current thread %s(%i) (child)\n", current_thread->name, current_thread->pid);
@@ -292,11 +294,11 @@ void schedule()
 	thread_t *tmp = get_next_thread();
 	if(tmp == last)
         return;
-        
+
 	make_thread_ready((thread_t*)current_thread);
 	//Free the dead threads running
 	free_dead_threads();
-
+   
 	_switch(tmp);
 }
 void _switch(thread_t *new)
@@ -310,7 +312,7 @@ void _switch(thread_t *new)
 	ebp = current_thread->ebp;
 	eip = current_thread->eip;
 	
-	notify_event(EVENT_THREAD_SWITCH, (void*)current_thread);
+	//notify_event(EVENT_THREAD_SWITCH, (void*)current_thread);
 	set_kernel_stack(current_thread->esp0);
 	
 	//perform the jump

@@ -2,8 +2,13 @@
 
 void main(int argc, char *argv[])
 {
-	printf("Testing exec on 'hellothree'.\n");
-    execve("hellothree");
-    printf("Did it go well?\n");
+	printf("Testing fork().\n");
+    int ret = fork();
+    if(ret == 0)
+    {
+        printf("I'm tha child!\n");
+        exit();
+    }
+    printf("Parent here!\n");
     return;
 }

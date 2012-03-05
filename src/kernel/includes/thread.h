@@ -16,6 +16,7 @@ typedef struct image
 {
 	uint size;
 	uint stack;
+    uint kernel_stack;
 	uint user_stack;
 	uint start;
 	uint entry;

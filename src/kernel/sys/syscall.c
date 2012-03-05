@@ -37,8 +37,15 @@ void syscall_execve_prototype()
 }
 static void syscall_execve(const char *name)
 {
-    thread_t *th = CreateThread(name, (uint)syscall_execve_prototype, STATE_RUNNABLE);
-    while(th->state != STATE_DEAD) wait(10); 
+    /*thread_t *th = CreateThread(name, (uint)syscall_execve_prototype, STATE_RUNNABLE);
+    while(th->state != STATE_DEAD);*/
+    int ret = fork();
+    if(ret == 0)
+    {
+        kprint("I am the child.\n");
+        exit();
+    }
+    kprint("I am the parent! ( child pid: %i )\n", ret);
 }
 
 static void *syscalls[] =
@@ -111,5 +118,6 @@ void syscall_handler(registers_t *regs)
 			: "=a"(ret) : "r"(regs->edi), "r"(regs->esi), "r"(regs->edx), "r"(regs->ecx), "r"(regs->ebx), "r"(location));
 	//In case the thread changed it's stack ( fork .. )
     regs = current_thread->syscall_registers;
+   // kprint("Returning %i, syscall %i\n", ret, regs->eax);
     regs->eax = ret;
 }

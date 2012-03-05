@@ -89,7 +89,8 @@ int exec_(fs_node_t *path, int argc, char **argv, int um)
 	if(um)
 	    gousermode();
 	call_t caller = (call_t)entry;
-	//asm volatile("sti");
+	if(!um)
+        asm volatile("sti");
 	caller(argc, argv);
 	//We will never reach this point ;)
 	return 1;
