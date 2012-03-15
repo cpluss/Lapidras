@@ -10,6 +10,7 @@ typedef struct
 } opt_t;
 
 extern fs_node_t *ramfs_root, *bin, *current_node;
+extern ata_device_t *maindevice;
 list_t *opt_list;
 static void add_opt(char *ident, opt_call_t handler)
 {
@@ -50,11 +51,12 @@ static int set_boot_device(char *val)
     if(strcmp(id, "hd")) //We use a HDD as boot device
     {
         //mount the device and set current_node
-        ata_device_t ata;
+        ata_device_t *ata = (ata_device_t*)kmalloc(sizeof(ata_device_t));
+        memset((byte*)ata, 0, sizeof(ata_device_t));
         int channel = (int)val[3] - '0';
      
-        ata_mount(&ata, 0, channel); //Mount the device -> Needs improvement by detection etc
-        if(ata.Type == ATA_DEVICE_INVALID)
+        ata_mount(ata, 0, channel); //Mount the device -> Needs improvement by detection etc
+        if(ata->Type == ATA_DEVICE_INVALID)
         {
             kprint("\n%s is not a valid boot device.\n", val);
             for(;;);
@@ -63,7 +65,7 @@ static int set_boot_device(char *val)
        
         int partition = (int)val[5] - '0'; //4'th is a ,
       
-        fs_node_t *tmp = mount_fat16(&ata, partition);        
+        fs_node_t *tmp = mount_fat16(ata, partition);        
         if(!tmp) //Could not find a fat16 partition at 'partition'
         {
             kprint("\n%s is not a valid fat16 formatted partition.\n");

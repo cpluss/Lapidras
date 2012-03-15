@@ -152,6 +152,10 @@ static void shell_mem(int argc, char **argv)
     	kprint("Allocated memory: 0x%x bytes.\n", get_allocated_memory());
 	else if(strcmp(argv[1], "list"))
 		list_blocks();
+	else if(strcmp(argv[1], "check"))
+		check_blocks();
+	else
+		kprint("Unknown options.\n");
 }
 static void shell_clean(int argc, char **argv)
 {
@@ -180,7 +184,7 @@ void register_command(char *n, cmd_call_t handler)
 	list_insert(avail_commands, (void*)cmd);
 }
 void shell_init()
-{
+{	
 	strcpy(CurrentThread()->name, "shell");
 	
 	kprint("Welcome to Lapidras v%s\n", VERSION);

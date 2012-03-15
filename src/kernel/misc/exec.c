@@ -25,7 +25,7 @@ int exec_(fs_node_t *path, int argc, char **argv, int um)
     //Read binary contents
     Elf32_Ehdr *ehdr = (Elf32_Ehdr*)kmalloc(path->length + 100);
     read_fs(path, 0, path->length, (byte*)ehdr);
-    
+
     //Elf read, verify that it is an elf
     if(ehdr->e_ident[0] != ELFMAG0 || ehdr->e_ident[1] != ELFMAG1 ||
 	   ehdr->e_ident[2] != ELFMAG2 || ehdr->e_ident[3] != ELFMAG3)

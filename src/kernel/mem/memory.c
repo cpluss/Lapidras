@@ -170,6 +170,38 @@ void list_blocks()
     }
     kprint("did not print %i free blocks ( 0x%x bytes of free memory .. )\n", (free_blocks - l), (free_blocks - l) * KMEM_CHUNK_SIZE);
 }
+void check_blocks()
+{
+	int i, j, e1, e2;
+	kprint("Checking memory blocks.\n");
+	ksetforeground(C_RED);
+	for(i = 0; i < nblocks; i++)
+	{
+		if(blocks[i] & FLAG_BLOCK_USED)
+		{
+			int s1 = GetBlockSize(i), s2 = 0;
+			//Check this block!
+			for(j = 0; j < nblocks; j++)
+			{
+				if(j == i) continue;
+				if(blocks[j] & FLAG_BLOCK_LINK || (blocks[j] & FLAG_BLOCK_USED == 0)) continue;
+				
+				s2 = GetBlockSize(j);
+				e1 = GET_BLOCK_LOCATION(blocks[i]) + s1;
+				e2 = GET_BLOCK_LOCATION(blocks[j]) + s2;
+				
+				//Check for any collision
+				if(GET_BLOCK_LOCATION(blocks[j]) > GET_BLOCK_LOCATION(blocks[i]) && GET_BLOCK_LOCATION(blocks[j]) < e1)
+					kprint("Memory block %i collides with %i\n", i, j);
+				if(e2 > GET_BLOCK_LOCATION(blocks[i]) && e2 < e1)
+					kprint("Memory block %i collides with %i\n", i, j);
+			}
+		}
+	}
+	ksetdefaultcolor();
+	kprint("Done.\n");
+}
+
 int get_allocated_memory()
 {
 	int ret, i;

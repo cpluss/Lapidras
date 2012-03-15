@@ -11,6 +11,21 @@ void memset(unsigned char *dest, unsigned char value, int len)
 	unsigned char *temp = (unsigned char *)dest;
     for ( ; len != 0; len--) *temp++ = value;
 }
+int memcmp(unsigned char *p1, unsigned char *p2, int n)
+{
+	const unsigned char *s1, *s2;
+  
+	s1 = p1;
+	s2 = p2;	
+	while(n-- > 0)
+	{
+		if(*s1 != *s2)
+		return *s1 - *s2;
+		s1++, s2++;
+	}
+
+  return 0;
+}
 
 void outb(unsigned short port, unsigned char value)
 {

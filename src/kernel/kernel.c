@@ -1,6 +1,7 @@
 #include "system.h"
 #include "thread.h"
 #include "fat.h"
+#include "apic.h"
 
 extern fs_node_t *current_node, *bin;
 extern void shell();
@@ -23,21 +24,6 @@ void print_log_end(const char *s)
 	kprint((char*)s);
 	ksetdefaultcolor();
 	kprint("]\n");
-}
-
-void shell_um()
-{
-    fs_node_t *node = finddir_fs(current_node, "shell");
-    if(!node)
-    {
-        ksetforeground(C_RED);
-        kprint("Could not find shell!\n");
-        asm volatile("cli");
-        for(;;);
-    }
-
-    char *argv[] = { "shell", NULL };
-    exec(node, 1, argv);
 }
 
 int kmain(multiboot_t *multiboot, uint esp)
@@ -102,7 +88,7 @@ int kmain(multiboot_t *multiboot, uint esp)
         print_log_end("OK");
     
     //CreateThread("shell", (uint)shell_um, STATE_RUNNABLE);   
-    CreateThread("shell", (uint)shell, STATE_RUNNABLE);
+    CreateThread("shell", (uint)shell, STATE_RUNNABLE);;
     exit();
 
     return 0;

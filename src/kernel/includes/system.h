@@ -98,6 +98,13 @@ enum {
     CPUID_FEAT_EDX_PBE          = 1 << 31
 };
 
+#define DEFAULT_IOAPIC 0xFEC00000
+typedef struct cpu
+{
+	byte id;
+	
+} cpu_t;
+
 //get_cpuid function
 extern int get_cpuid(int i, uint buffer);
 
@@ -114,11 +121,10 @@ extern void init_syscalls();
 extern int exec(fs_node_t *path, int argc, char **argv);
 extern int system(fs_node_t *path, int argc, char **argv);
 
-//The FPU functions
-extern void enable_fpu();
-extern void set_fpu_cw(const ushort cw);
-
-//FPU calculation functions
-extern float fsinus(float degree, float *out);
+static void init_descriptors()
+{
+    init_gdt();
+    init_idt();
+}
 
 #endif

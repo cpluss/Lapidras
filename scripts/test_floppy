@@ -1,7 +1,8 @@
 #!/bin/bash
 
-qemu-system-i386 -hda bin/hdd_32.img -boot c -m 32 -monitor stdio
+#Simulate 
+#qemu -hda bin/hdd.img -m 32 -monitor stdio
 
-#sudo losetup /dev/loop1 bin/hdd_32.img
-#sudo bochs -f bin/bochsrc.txt -q
-#sudo losetup -d /dev/loop1
+sudo losetup /dev/loop1 bin/hdd.img
+sudo bochs -f bin/bochsrc.txt -q
+sudo losetup -d /dev/loop1

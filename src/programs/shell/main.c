@@ -2,7 +2,7 @@
 
 void main(int argc, char *argv[])
 {
-	printf("Testing fork().\n");
+	/*printf("Testing fork().\n");
     int ret = fork();
     if(ret == 0)
     {
@@ -10,5 +10,7 @@ void main(int argc, char *argv[])
         exit();
     }
     printf("Parent here!\n");
-    return;
+    return;*/
+    
+    printf("I AM A DUMMY SHELL THAT DOESn't WORK!\n");
 }

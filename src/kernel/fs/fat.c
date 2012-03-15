@@ -18,7 +18,7 @@ static uint fat16_read(fs_node_t *fsnode, uint offset, uint size, byte *buffer)
 	fat16_entry_t *entry = (fat16_entry_t*)fsnode->_ptr;
 	uint cluster_size = fat16_root_entry->bpb->sectors_per_cluster * fat16_root_entry->bpb->bytes_per_sector;
 	uint read_size = (fsnode->length < cluster_size) ? cluster_size : (((fsnode->length / cluster_size) + 1) * cluster_size);
-	
+
 	if(size > entry->size)
 		size = entry->size;
 	if(size != cluster_size || offset != 0) //we need to do it the slow way :( -> using memcpy
@@ -69,7 +69,7 @@ static fs_node_t *fat16_create(fs_node_t *parent, char *name, int attribute)
 	new->size = 0; //Anything hasn't been written yet..
 	new->children = list_create();
 	strcpy(new->filename, name);
-	list_insert(entry->children, (void*)entry); //Insert into parent children
+	list_insert(entry->children, (void*)new); //Insert into parent children
 	
 	fat16_dir_t *dir = (fat16_dir_t*)kmalloc(sizeof(fat16_dir_t));
 	memset((byte*)dir, 0, sizeof(fat16_dir_t));
@@ -217,7 +217,7 @@ int fat16_read_clusters(uint cluster, byte *buffer, uint ol_size)
 	//uint absolute_cluster = cluster - 2 + fat16_root_entry->bpb->first_data_sector;
 	uint sector = (fat16_root_entry->bpb->sectors_per_cluster * (cluster - 2)) + fat16_root_entry->bpb->first_data_sector;
 	uint cluster_size = fat16_root_entry->bpb->sectors_per_cluster * fat16_root_entry->bpb->bytes_per_sector;
-	read_hdd(fat16_root_entry->device, sector, (byte*)((uint)buffer + ol_size), cluster_size); //read hdd
+    read_hdd(fat16_root_entry->device, sector, (byte*)((uint)buffer + ol_size), cluster_size); //read hdd
 	
 	//next read the fat16 FAT table
 	byte *FAT_table = (byte*)kmalloc(cluster_size);
@@ -227,6 +227,7 @@ int fat16_read_clusters(uint cluster, byte *buffer, uint ol_size)
 	uint ent_offset = fat_offset % cluster_size;
 	
 	//Read the FAT table from the harddisk
+    //kprint("Reading sector %i\n", fat_sector);
 	read_hdd(fat16_root_entry->device, fat_sector, FAT_table, cluster_size);
 	
 	//ushort table_value = *(ushort*)((uint)FAT_table + fat_offset);
@@ -427,20 +428,27 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 		fat16_dir_t *dir = (fat16_dir_t*)kmalloc(sizeof(fat16_dir_t));
 		//copy the contents
 		memcpy((byte*)ln, (byte*)(b + offset), sizeof(fat16_dir_longfilename_t));
-		offset += sizeof(fat16_dir_longfilename_t);
+		if(ln->type == 0)
+			offset += sizeof(fat16_dir_longfilename_t);
+		else
+		{
+			free((void*)ln);
+			free((void*)dir);
+			continue;
+		}
+		
 		memcpy((byte*)dir, (byte*)(b + offset), sizeof(fat16_dir_t));
 		offset += sizeof(fat16_dir_t);
-		
-		if(ln->attribute != 0x0F)
+		if(/*ln->name_low[0] < 0x20 && */ln->attribute != 0x0F)
 		{
-			free(ln);
-			free(dir);
+			free((void*)ln);
+			free((void*)dir);
 			break;
 		}
 		if(dir->filename[0] & 0xFFFFFF00)
 		{
-			free(ln);
-			free(dir);
+			free((void*)ln);
+			free((void*)dir);
 			continue;
 		}
 		
@@ -451,7 +459,20 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 		entry->ident = ident;
 		entry->device = device;
 		entry->size = dir->size;
-		fat16_convert_readable_filename(dir->filename, entry->filename);
+		
+		if(ln->type == 0 && ln->attribute == 0x0F)
+			fat16_read_name(ln, entry->filename);
+		else
+			fat16_convert_readable_filename(dir->filename, entry->filename);
+		/*if(strcmp(entry->filename, "NN") || strcmp(entry->filename, "N"))
+		{
+			free((void*)entry);
+			free((void*)ln);
+			free((void*)dir);
+			continue;
+		}*/
+		
+		
 		entry->cluster = dir->cluster;
 		entry->children = list_create(); //Create the list of child nodes
 		list_insert(fat16_root_entry->children, (void*)entry); //Insert into childrens
@@ -480,6 +501,8 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 		node->length = entry->size;
 		list_insert(nodes_list, (void*)node); //Insert it into the node list
 		
+        //kprint("Found %s in root.\n", node->name);
+
 		entry->node = node; //Set the node pointer for fast retrieval
 		node->_ptr = (void*)entry;
 	}

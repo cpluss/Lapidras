@@ -89,6 +89,7 @@ void read_hdd(ata_device_t *device, int lba, char *buffer, int size)
     if(device->Type == ATA_DEVICE_MEMORY)
     {
         //Piece a cake!
+        kprint("Reading memory device..\n");
         memcpy(buffer, (char*)((uint)device->image + (lba * 512)), size);
         return;
     }
@@ -113,7 +114,7 @@ void read_ata_sector(ata_device_t *device, int lba, char *buffer)
 	//send drive indicator and the highest bits (4) of the lba
 	outb(device->base + 6, (0xE0 | (device->drive << 4) | ((lba >> 24) & 0x0F)));
 	//send null descriptor, to waste time
-	outb(device->base + 1, 0);
+	//outb(device->base + 1, 0);
 	//sector count to port 2
 	outb(device->base + 2, 1);
 	
@@ -123,8 +124,8 @@ void read_ata_sector(ata_device_t *device, int lba, char *buffer)
 	outb(device->base + 5, (byte)(lba >> 16)); //high
 	
 	//wait 1ms - took to long with several file operations
-	//wait(1);
-	int n = 4;
+	wait(1);
+	/*int n = 4;
 	while(1)
 	{
 		byte in = inb(device->base + 7);
@@ -135,13 +136,17 @@ void read_ata_sector(ata_device_t *device, int lba, char *buffer)
 		}
 		if(!(in & 0x80) && !(in & 0x08))
 			break;
-	}
+	}*/
 	
 	//send command to read
 	outb(device->base + 7, 0x20);
 	
 	//wait for the device to get ready
-	while(!(inb(device->base + 7) & 0x08));
+	//while(!(inb(device->base + 7) & 0x08));
+    //kprint("Waiting for device(0x%x)...", device->base);
+    while((inb(device->base + 7) & 0xC0) != 0x40);
+    //kprint("done.\n");
+    
 	//read using the insert word assembler command ( inline assembler )
 	insw(device->base, buffer, 256);
 	//reset device
