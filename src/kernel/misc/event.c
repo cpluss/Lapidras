@@ -1,6 +1,6 @@
 #include "event.h"
 #include "list.h"
-#include "cio.h"
+#include "console.h"
 
 list_t *events;
 

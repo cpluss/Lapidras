@@ -1,6 +1,6 @@
 #include "apic.h"
 #include "system.h"
-#include "cio.h"
+#include "console.h"
 #include "memory.h"
 
 extern volatile uint *lapic;

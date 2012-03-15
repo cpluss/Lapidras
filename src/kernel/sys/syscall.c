@@ -1,6 +1,6 @@
 #include "system.h"
 #include "thread.h"
-#include "cio.h"
+#include "console.h"
 
 //The current thread, externally declared ..
 extern volatile thread_t *current_thread;

@@ -188,5 +188,6 @@ fs_node_t *init_initrd(uint location)
         j++;
 	}
 	
+	set_root_fs(initrd_root);
 	return initrd_root;
 }

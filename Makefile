@@ -27,7 +27,7 @@ CPUBITSs = $(patsubst %.asm,%.o,$(wildcard src/kernel/cpu/*.asm))
 OBJ_FILES_f = $(GEN) $(DATASTRUCTURES) $(SERVICES) $(FILESYSTEMS) $(VIDEODRIVERS) $(VIRTUALMEM) $(MISCMODS) $(SYSTEM) $(CPUBITS) $(FILESYSTEMSs) $(VIDEODRIVERSs) $(VIRTUALMEMs) $(GENs) $(MISCMODSs) $(SYSTEMs) $(CPUBITSs)
 OBJ_FILES = $(patsubst src/kernel/%,bin/obj/%,$(OBJ_FILES_f))
 
-.PHONY: all clean programs initrd directories qemu bochs hdd_image cd_image
+.PHONY: all clean programs initrd directories qemu bochs hdd_image cd_image qemu_cd
 
 all: bin/kernel.bin
 
@@ -55,7 +55,8 @@ cd_image:
 hdd_image:
 	@sh ./scripts/create_floppy.sh
 	
-qemu: hdd_image
+qemu:
+	@sh ./scripts/create_floppy.sh
 	@qemu -hda bin/hdd.img -monitor stdio -m 128
 bochs:
 	@sh ./scripts/test_floppy

@@ -10,11 +10,10 @@
 #include "gdt.h"
 #include "fs.h"
 #include "multiboot.h"
-#include "descriptors.h"
 #include "file.h"
 #include "version.h"
 #include "event.h"
-#include "cio.h"
+#include "console.h"
 #include "string.h"
 #include "initrd.h"
 

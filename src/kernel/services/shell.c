@@ -1,6 +1,7 @@
 #include "system.h"
 #include "thread.h"
 #include "fat.h"
+#include "node.h"
 extern fs_node_t *ramfs_root;
 extern fs_node_t *current_node;
 fs_node_t *bin;
@@ -161,6 +162,10 @@ static void shell_clean(int argc, char **argv)
 {
     clear_screen();
 }
+static void shell_test(int argc, char **argv)
+{
+    kprint("no testing available.\n");
+}
 
 int shell_find(int argc, char **argv)
 {
@@ -196,6 +201,7 @@ void shell_init()
 	register_command("ls", &shell_ls);
     register_command("mem", &shell_mem);
     register_command("clear", &shell_clean);
+    register_command("test", &shell_test);
 }
 void shell()
 {

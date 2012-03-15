@@ -69,6 +69,8 @@ int kmain(multiboot_t *multiboot, uint esp)
 		print_log_end("OK");
 	else
 		print_log_end("FAIL");
+	//As a extra partof the ramfs, initialize the nodes
+	init_nodes();
     //Init the syscall interrupt ( 0x70 ) -> Initial plan to use 0x80 discarded, weird error pop up.
     //The 0x70 interrupt will be overwritten by it's original purpose, which at the moment is unclear to me.
     print_log_begin("Initiating syscalls");

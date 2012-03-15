@@ -116,4 +116,8 @@ enum PARTITION_FS_TYPES
 
 void get_partition_table(ata_device_t *device, partitiontable_t *table, byte index);
 
+//Change the root fs of the current os
+void set_root_fs(fs_node_t *fsnode);
+fs_node_t *get_root_fs();
+
 #endif

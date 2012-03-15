@@ -1,4 +1,4 @@
-#include "cio.h"
+#include "console.h"
 #include "ports.h"
 #include "args.h"
 #include "thread.h"

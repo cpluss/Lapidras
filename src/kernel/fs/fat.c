@@ -1,7 +1,7 @@
 #include "fat.h"
 #include "memory.h"
 #include "list.h"
-#include "cio.h"
+#include "console.h"
 
 fat16_entry_t *fat16_root_entry;
 fs_node_t *fat16_root;
@@ -227,7 +227,6 @@ int fat16_read_clusters(uint cluster, byte *buffer, uint ol_size)
 	uint ent_offset = fat_offset % cluster_size;
 	
 	//Read the FAT table from the harddisk
-    //kprint("Reading sector %i\n", fat_sector);
 	read_hdd(fat16_root_entry->device, fat_sector, FAT_table, cluster_size);
 	
 	//ushort table_value = *(ushort*)((uint)FAT_table + fat_offset);
@@ -287,38 +286,37 @@ static void fat16_read_name(fat16_dir_longfilename_t *ln, char *out)
 	}
 	out[j] = 0; //null terminate
 }
-static void populate_children(ata_device_t *device, fat16_entry_t *parent)
+static void populate_children(ata_device_t *device, fat16_entry_t *parent, uint isroot)
 {
 	if(parent->cluster <= 0)
 		return;
 		
 	uint cluster_size = fat16_root_entry->bpb->sectors_per_cluster * fat16_root_entry->bpb->bytes_per_sector;
 	char *b = (char*)kmalloc(cluster_size);
-	fat16_read_clusters(parent->cluster, b, 0);
+	if(!isroot)
+		fat16_read_clusters(parent->cluster, b, 0);
+	else
+		read_hdd(device, parent->cluster, b, cluster_size);
 	
-	int offset = 0;//sizeof(fat16_dir_longfilename_t) + sizeof(fat16_dir_t);
+	int offset = 0;
 	int idx = 0;
 	while(1)
 	{
 		idx++;
 		
-		fat16_dir_longfilename_t *ln = (fat16_dir_longfilename_t*)((uint)b + offset);//(fat16_dir_longfilename_t*)kmalloc(sizeof(fat16_dir_longfilename_t));
-		//offset += sizeof(fat16_dir_longfilename_t);
+		fat16_dir_longfilename_t *ln = (fat16_dir_longfilename_t*)((uint)b + offset);
 		if(ln->type == 0)
 			offset += sizeof(fat16_dir_longfilename_t);
 		else
 			continue;
 			
-		fat16_dir_t *dir = (fat16_dir_t*)((uint)b + offset);//(fat16_dir_t*)kmalloc(sizeof(fat16_dir_t));
+		fat16_dir_t *dir = (fat16_dir_t*)((uint)b + offset);
 		offset += sizeof(fat16_dir_t);
 		if(dir->filename[0] == '.' && ln->name_high[0] == '.')
 			continue;
 		
 		if(ln->name_low[0] < 0x20 && ln->attribute != 0x0F)
-		{				
-			
 			break;
-		}
 		if(dir->filename[0] & 0xFFFFFF00)
 		{
 			continue;
@@ -332,7 +330,7 @@ static void populate_children(ata_device_t *device, fat16_entry_t *parent)
 		entry->device = device;
 		entry->size = dir->size;
 		if(dir->attribute == FAT16_ATTR_DIRECTORY)
-			populate_children(device, entry);
+			populate_children(device, entry, 0);
 		
 		if(ln->type == 0 && ln->attribute == 0x0F)
 			fat16_read_name(ln, entry->filename);
@@ -356,7 +354,7 @@ static void populate_children(ata_device_t *device, fat16_entry_t *parent)
 		{
 			case FAT16_ATTR_DIRECTORY:
 				node->flags = FS_DIRECTORY;
-				populate_children(device, entry);
+				populate_children(device, entry, 0);
 				break;
 			case FAT16_ATTR_FILE:
 				node->flags = FS_FILE;
@@ -417,7 +415,8 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 	//Read all of the directory entries into a three structure. In that way you only need the root directory.
 	int root_directory = (bpb->reserved_sectors + (bpb->FATS * bpb->sectors_per_fat)) + table.relative_sector;
 	int root_size = (bpb->directory_entries * sizeof(fat16_dir_t)) + (bpb->directory_entries * sizeof(fat16_dir_longfilename_t));
-
+	fat16_root_entry->cluster = root_directory;
+	
     char *b = (char*)alloc(root_size);
 	read_hdd(device, root_directory, b, root_size);
     
@@ -425,21 +424,41 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 	while(1)
 	{
 		fat16_dir_longfilename_t *ln = (fat16_dir_longfilename_t*)kmalloc(sizeof(fat16_dir_longfilename_t));
+		memset(ln, 0, sizeof(fat16_dir_longfilename_t));
 		fat16_dir_t *dir = (fat16_dir_t*)kmalloc(sizeof(fat16_dir_t));
-		//copy the contents
 		memcpy((byte*)ln, (byte*)(b + offset), sizeof(fat16_dir_longfilename_t));
 		if(ln->type == 0)
 			offset += sizeof(fat16_dir_longfilename_t);
-		else
+		
+		memcpy((byte*)dir, (byte*)(b + offset), sizeof(fat16_dir_t));
+		offset += sizeof(fat16_dir_t);
+		/*if(ln->attribute != 0x0F)
+		{
+			kprint("Break when dirname is '%s'(0x%x)\n", dir->filename, dir->always_zero);
+			free((void*)ln);
+			free((void*)dir);
+			break;
+		}
+		if(dir->filename[0] & 0xFFFFFF00)
+		{
+			free((void*)ln);
+			free((void*)dir);
+			continue;
+		}*/
+		if(dir->always_zero != 0)
+		{
+			free((void*)ln);
+			free((void*)dir);
+			continue;
+		}
+		if(dir->filename[0] == '.' && ln->name_high[0] == '.')
 		{
 			free((void*)ln);
 			free((void*)dir);
 			continue;
 		}
 		
-		memcpy((byte*)dir, (byte*)(b + offset), sizeof(fat16_dir_t));
-		offset += sizeof(fat16_dir_t);
-		if(/*ln->name_low[0] < 0x20 && */ln->attribute != 0x0F)
+		if(ln->name_low[0] < 0x20 && ln->attribute != 0x0F)
 		{
 			free((void*)ln);
 			free((void*)dir);
@@ -464,44 +483,41 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 			fat16_read_name(ln, entry->filename);
 		else
 			fat16_convert_readable_filename(dir->filename, entry->filename);
-		/*if(strcmp(entry->filename, "NN") || strcmp(entry->filename, "N"))
-		{
-			free((void*)entry);
-			free((void*)ln);
-			free((void*)dir);
-			continue;
-		}*/
-		
 		
 		entry->cluster = dir->cluster;
 		entry->children = list_create(); //Create the list of child nodes
 		list_insert(fat16_root_entry->children, (void*)entry); //Insert into childrens
 		if(dir->attribute == FAT16_ATTR_DIRECTORY)
-			populate_children(device, entry);
-			
-		//Create a node to the entry
-		fs_node_t *node = (fs_node_t*)kmalloc(sizeof(fs_node_t));
-		memset((byte*)node, 0, sizeof(fs_node_t));
-		node->finddir = &fat16_finddir;
-		node->readdir = &fat16_readdir;
-		//node->create = &fat16_create;
-		node->write = &fat16_write;
-		node->read = &fat16_read;
-		switch(dir->attribute)
-		{
-			case FAT16_ATTR_DIRECTORY:
-				node->flags = FS_DIRECTORY;
-				break;
-			case FAT16_ATTR_FILE:
-				node->flags = FS_FILE;
-				break;
-		}
-		node->inode = ident++;
-		strcpy(node->name, entry->filename); //Copy the filename
-		node->length = entry->size;
-		list_insert(nodes_list, (void*)node); //Insert it into the node list
+			populate_children(device, entry, 0);
 		
-        //kprint("Found %s in root.\n", node->name);
+		fs_node_t *node = 0;
+		if(strcmp(entry->filename, "dev"))
+			node = finddir_fs(get_root_fs(), "dev"); //Should already be mounted in ramfs
+		
+		//Create a node to the entry
+		if(!node)
+		{
+			node = (fs_node_t*)kmalloc(sizeof(fs_node_t));
+			memset((byte*)node, 0, sizeof(fs_node_t));
+			node->finddir = &fat16_finddir;
+			node->readdir = &fat16_readdir;
+			//node->create = &fat16_create;
+			node->write = &fat16_write;
+			node->read = &fat16_read;
+			switch(dir->attribute)
+			{
+				case FAT16_ATTR_DIRECTORY:
+					node->flags = FS_DIRECTORY;
+					break;
+				case FAT16_ATTR_FILE:
+					node->flags = FS_FILE;
+					break;
+			}
+			node->inode = ident++;
+			strcpy(node->name, entry->filename); //Copy the filename
+			node->length = entry->size;
+		}
+		list_insert(nodes_list, (void*)node); //Insert it into the node list
 
 		entry->node = node; //Set the node pointer for fast retrieval
 		node->_ptr = (void*)entry;

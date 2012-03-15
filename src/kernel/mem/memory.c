@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "cio.h"
+#include "console.h"
 #include "paging.h"
 #include "event.h"
 

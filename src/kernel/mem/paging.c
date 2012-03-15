@@ -1,6 +1,6 @@
 #include "paging.h" 
 #include "memory.h"
-#include "cio.h"
+#include "console.h"
 
 //frame allocation system.. We initialize a frame address, a index
 //using a bitmap

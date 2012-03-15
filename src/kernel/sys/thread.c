@@ -2,7 +2,7 @@
 #include "list.h"
 #include "memory.h"
 #include "paging.h"
-#include "cio.h"
+#include "console.h"
 #include "event.h"
 
 extern page_directory_t *current_directory;
@@ -33,6 +33,7 @@ void start_multithreading(uint esp)
     set_kernel_stack(current_thread->esp0);
 	current_thread->page_directory = current_directory;
 	current_thread->signal_queue = list_create();
+	current_thread->nodes = list_create();
 	
 	asm volatile("sti");
 }
@@ -55,6 +56,7 @@ thread_t *CreateThread(const char *name, uint eip, uint state)
 	new->pid = next_pid++;
 	strcpy(new->name, name);
 	new->signal_queue = list_create();
+	new->nodes = list_create();
 	
 	new->state = state;
 	switch(new->state)
@@ -138,6 +140,7 @@ int fork()
 	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->page_directory = dir;
 	new->signal_queue = list_copy(current_thread->signal_queue);
+	new->nodes = list_copy(current_thread->nodes);
 	new->parent = (thread_t*)current_thread;
 
 	//Read the current intstruction pointer

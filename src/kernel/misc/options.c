@@ -74,8 +74,9 @@ static int set_boot_device(char *val)
         }
        
         //Find the tmp and mount the fat16 partition
-        fs_node_t *dev = finddir_fs(ramfs_root, "dev"); //If this fails, sigh!
-        mounton_fs(dev, tmp); //Mount the fat16 node on dev - using MOUNTPOINT
+        //fs_node_t *dev = finddir_fs(ramfs_root, "dev"); //If this fails, sigh!
+        //mounton_fs(dev, tmp); //Mount the fat16 node on dev - using MOUNTPOINT
+        set_root_fs(tmp); //Set the new root directory
         bin = finddir_fs(tmp, "bin");
         current_node = tmp; //Set the current root directory 
     }

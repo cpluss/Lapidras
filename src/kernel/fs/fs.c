@@ -1,6 +1,20 @@
 #include "fs.h"
 #include "list.h"
 
+fs_node_t *current_root_node;
+fs_node_t *current_root_dev;
+
+void set_root_fs(fs_node_t *fsnode)
+{
+	//Set the current root fs
+	current_root_node = fsnode;
+	current_root_dev = finddir_fs(fsnode, "dev");
+}
+fs_node_t *get_root_fs()
+{
+	return current_root_node;
+}
+
 uint read_fs(fs_node_t *node, uint offset, uint size, byte *buffer)
 {
 	if(node->read != 0)

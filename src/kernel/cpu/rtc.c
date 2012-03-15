@@ -1,6 +1,6 @@
 #include "ports.h"
 #include "isr.h"
-#include "cio.h"
+#include "console.h"
 #include "version.h"
 
 int time = 0, t_tick = 0;

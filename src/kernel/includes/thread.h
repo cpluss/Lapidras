@@ -37,7 +37,9 @@ typedef struct thread
 	image_t base;
 	char name[16];
 	list_t *signal_queue;
-	//uint state;
+	
+	//Nodes connected to this thread
+	list_t *nodes;
 	
     registers_t *syscall_registers;
 	struct thread *parent;
