@@ -188,6 +188,10 @@ void kbd_get_string(char *b)
 }
 
 int shift, alt, ctrl;
+#define KBD_SHFT 0x100
+#define KBD_CTRL 0x200
+#define KBD_ALT  0x300
+int state = 0;
 static void kbd_handler(registers_t *regs)
 {
 	byte scancode = inb(0x60);
@@ -197,25 +201,26 @@ static void kbd_handler(registers_t *regs)
 	{
 		case 0x2A: //Shift in
 		case 0x36:
-			shift = 1;
+			//shift = 1;
+            state |= KBD_SHFT;
 			break;
 		case 0xAA: //Shift out
 		case 0xB6:
-			shift = 0;
+			state &= ~(KBD_SHFT);
 			break;
 			
 		case 0x1D: //Ctrl in
-			ctrl = 1;
+			state |= KBD_CTRL;
 			break;
 		case 0x9D: //Ctrl out
-			ctrl = 0;
+			state &= ~(KBD_CTRL);
 			break;
 		
 		case 0x38: //Alt in
-			alt = 1;
+			state |= KBD_ALT;
 			break;
 		case 0xB8: //Alt out
-			alt = 0;
+			state &= ~(KBD_ALT);
 			break;
 	}
 	
@@ -223,12 +228,13 @@ static void kbd_handler(registers_t *regs)
 	if(scancode & 0x80)
 		return;
 	
-	if((shift == 1) && (c > 0x60 && c < 0x7A))
+	if((state & KBD_SHFT) && (c > 0x60 && c < 0x7A))
 		c -= 0x20;
-	if(alt)
+	if(state & KBD_ALT)
 		c = second_map[scancode];
 	kputc_v(current_visible_console, c);
-	notify_event(EVENT_KBD_CHAR, (void*)&c);
+    uint p = state | c;
+	notify_event(EVENT_KBD_CHAR, (void*)&p);
 	
 	if(listeners->length > 0)
 	{
@@ -277,8 +283,8 @@ void init_kbd()
 {
 	asm volatile("cli"); 	//No interrupts now...
 	register_interrupt_handler(33, &kbd_handler);
-	set_dvorak(); //by default ;)
-	//set_qwerty();
+	//set_dvorak(); //by default ;)
+	set_qwerty();
 	
 	listeners = list_create();
 	

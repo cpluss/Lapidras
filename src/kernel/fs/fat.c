@@ -90,26 +90,13 @@ static fs_node_t *fat16_create(fs_node_t *parent, char *name, int attribute)
 	
 	short cluster;
 	
-	int size;*/
+	int size;
 	//TODO: Add date support
 	
 	//Select a free cluster
 	short selected_cluster = 0;
-	/*
-	 * 
-	uint cluster_size = fat16_root_entry->bpb->sectors_per_cluster * fat16_root_entry->bpb->bytes_per_sector;
-	//next read the fat16 FAT table
-	byte *FAT_table = (byte*)kmalloc(cluster_size);
-	uint fat_offset = cluster * 2;
-	uint fat_sector = (fat16_root_entry->bpb->reserved_sectors + fat16_root_entry->bpb->relative_sector) +
-					   (fat_offset / cluster_size);
-	uint ent_offset = fat_offset % cluster_size;
 	
-	//Read the FAT table from the harddisk
-	read_hdd(fat16_root_entry->device, fat_sector, FAT_table, cluster_size);
-	
-	//ushort table_value = *(ushort*)((uint)FAT_table + fat_offset);
-	ushort table_value = *(ushort*)&FAT_table[ent_offset];*/
+	ushort table_value = *(ushort*)&FAT_table[ent_offset];*
 	uint cluster_size = fat16_root_entry->bpb->sectors_per_cluster * fat16_root_entry->bpb->bytes_per_sector;
 	byte *FAT_table = (byte*)kmalloc(cluster_size);
 	uint fat_sector = (fat16_root_entry->bpb->reserved_sectors + fat16_root_entry->bpb->relative_sector);
@@ -123,32 +110,9 @@ static fs_node_t *fat16_create(fs_node_t *parent, char *name, int attribute)
 		if(val == 0)
 			break; //This fat offset will do.
 	}
-	
 	dir->cluster = selected_cluster;
 	
 	
-	/*
-	 * //Create a node to the entry
-		fs_node_t *node = (fs_node_t*)kmalloc(sizeof(fs_node_t));
-		memset((byte*)node, 0, sizeof(fs_node_t));
-		node->finddir = &fat16_finddir;
-		node->readdir = &fat16_readdir;
-		//node->create = &fat16_create;
-		node->write = &fat16_write;
-		node->read = &fat16_read;
-		switch(dir->attribute)
-		{
-			case FAT16_ATTR_DIRECTORY:
-				node->flags = FS_DIRECTORY;
-				break;
-			case FAT16_ATTR_FILE:
-				node->flags = FS_FILE;
-				break;
-		}
-		node->inode = ident++;
-		strcpy(node->name, entry->filename); //Copy the filename
-		node->length = entry->size;
-		list_insert(nodes_list, (void*)node); //Insert it into the node list*/
 	fs_node_t *node = (fs_node_t*)kmalloc(sizeof(fs_node_t));
 	memset((byte*)node, 0, sizeof(fs_node_t));
 	node->inode = ident++;	
@@ -169,7 +133,7 @@ static fs_node_t *fat16_create(fs_node_t *parent, char *name, int attribute)
 	}
 	strcpy(node->name, name);
 	node->length = 0;
-	list_insert(nodes_list, (void*)node);
+	list_insert(nodes_list, (void*)node);*/
 }
 
 static uint fat16_write(fs_node_t *fsnode, uint offset, uint size, byte *buffer)
@@ -239,7 +203,7 @@ int fat16_read_clusters(uint cluster, byte *buffer, uint ol_size)
 	else if(table_value == 0xFFF7) //bad cluster
 	{
 		ksetforeground(C_RED);
-		kprint("Bad cluster stumbled upon, returning..\n");
+		kprint("Bad cluster upon stumbling ;), returning..\n");
 		ksetdefaultcolor();
 		return cluster_size + ol_size;
 	}

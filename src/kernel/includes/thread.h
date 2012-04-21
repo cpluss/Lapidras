@@ -16,7 +16,7 @@ typedef struct image
 {
 	uint size;
 	uint stack;
-    uint kernel_stack;
+    //uint kernel_stack;
 	uint user_stack;
 	uint start;
 	uint entry;
@@ -26,7 +26,7 @@ typedef struct thread
 {
 	uint pid;
 	uint esp;
-	uint esp0;
+	//uint esp0;
 	uint ebp;
 	uint eip;
 	

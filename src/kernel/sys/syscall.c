@@ -96,20 +96,24 @@ void syscall_handler(registers_t *regs)
 	void *location = syscalls[regs->eax];
 	
     //Set the current threads syscall registers
-    current_thread->syscall_registers = regs;
+    current_thread->syscall_registers = regs;     
 
 	//we have no idea what the parameters is for every
 	//syscall, use all parameters available
-	int ret;
+	int ret; 
+   /* if(regs->eax == 14)
+        kprint("EIP: 0x%x  CS: 0x%x   EFLAGS: 0x%x  USERESP: 0x%x  SS: 0x%x\n",
+            regs->eip, regs->cs, regs->eflags, regs->userresp, regs->ss);*/
+
 	asm volatile("\
 		push %1; \
 		push %2; \
 		push %3; \
 		push %4; \
 		push %5; \
-		sti; \
+        sti;    \
 		call *%6; \
-		cli; \
+        cli;    \
 		pop %%ebx; \
 		pop %%ebx; \
 		pop %%ebx; \
@@ -118,6 +122,9 @@ void syscall_handler(registers_t *regs)
 			: "=a"(ret) : "r"(regs->edi), "r"(regs->esi), "r"(regs->edx), "r"(regs->ecx), "r"(regs->ebx), "r"(location));
 	//In case the thread changed it's stack ( fork .. )
     regs = current_thread->syscall_registers;
-   // kprint("Returning %i, syscall %i\n", ret, regs->eax);
+   /* if(regs->eax == 14)
+        kprint("EIP: 0x%x  CS: 0x%x   EFLAGS: 0x%x  USERESP: 0x%x  SS: 0x%x\n",
+            regs->eip, regs->cs, regs->eflags, regs->userresp, regs->ss);*/
+
     regs->eax = ret;
 }

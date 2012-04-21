@@ -253,7 +253,7 @@ void kprint_v(virtual_console_t *console, byte *s, ...)
 				case 'c':
 				{
 					byte c = va_arg(ap, int);
-					kputc_v(console, c);
+					kputc_v(console, (char)(c & 0xff));
 				}
 				case 's':
 				{
@@ -291,11 +291,11 @@ void kprint_v(virtual_console_t *console, byte *s, ...)
 					for(j = 28; j > -1; j -= 4)
 					{
 						char o = hexarray[(num >> j) & 0xF];
-						//if(o != '0')
-						//	f = 1;
-						//if(f == 0 && o == '0')
-						//	continue;
-						kputc_v(console, hexarray[(num >> j) & 0xF]);
+						if(o == '0' && !f)
+                            f = 1;
+
+                        if(f)
+						    kputc_v(console, hexarray[(num >> j) & 0xF]);
 					}
 				}break;
 			}

@@ -1,7 +1,6 @@
 #include "system.h"
 #include "thread.h"
 #include "fat.h"
-#include "apic.h"
 
 extern fs_node_t *current_node, *bin;
 extern void shell();
@@ -69,7 +68,7 @@ int kmain(multiboot_t *multiboot, uint esp)
 		print_log_end("OK");
 	else
 		print_log_end("FAIL");
-	//As a extra partof the ramfs, initialize the nodes
+	//As a extra part of the ramfs, initialize the nodes
 	init_nodes();
     //Init the syscall interrupt ( 0x70 ) -> Initial plan to use 0x80 discarded, weird error pop up.
     //The 0x70 interrupt will be overwritten by it's original purpose, which at the moment is unclear to me.

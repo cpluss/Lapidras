@@ -156,15 +156,22 @@ static void shell_mem(int argc, char **argv)
 	else if(strcmp(argv[1], "check"))
 		check_blocks();
 	else
-		kprint("Unknown options.\n");
+		kprint("Unknown options.\n\tlist - show all the memoryblocks\n\tcheck - check all the memory boundaries\n");
 }
 static void shell_clean(int argc, char **argv)
 {
     clear_screen();
 }
+
 static void shell_test(int argc, char **argv)
 {
-    kprint("no testing available.\n");
+    int ret = fork();
+    if(ret  == 0)
+    {
+        kprint("Got a child here!\n");
+        exit();
+    }
+    kprint("I may be thy parent!\n");
 }
 
 int shell_find(int argc, char **argv)
@@ -190,7 +197,7 @@ void register_command(char *n, cmd_call_t handler)
 }
 void shell_init()
 {	
-	strcpy(CurrentThread()->name, "shell");
+	strcpy(CurrentThread()->name, "kernel_shell");
 	
 	kprint("Welcome to Lapidras v%s\n", VERSION);
 	avail_commands = list_create();

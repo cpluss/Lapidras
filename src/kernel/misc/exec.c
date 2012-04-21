@@ -7,7 +7,10 @@
 extern page_directory_t *current_directory;
 extern volatile thread_t *current_thread;
 typedef void (*call_t)(uint, char**);
-#define UCODE_START 0x400000
+#define UCODE_START     0x400000
+#define UM_STACK_START  0x1000000
+//#define UM_STACK_SIZE   0x0100000
+#define UM_STACK_SIZE   0xFFFFF
 
 int execd(fs_node_t *path, int argc, char **argv)
 {
@@ -69,7 +72,7 @@ int exec_(fs_node_t *path, int argc, char **argv, int um)
 				memset((byte*)shdr->sh_addr, 0, shdr->sh_size); //The .bss is uninitialized memory ..
 			else //Nope .. then copy it
 				memcpy((byte*)shdr->sh_addr, (byte*)((uint)ehdr + shdr->sh_offset), shdr->sh_size);
-				
+
 		}
 	}
 	//flush TLB to notify the page changes
@@ -77,7 +80,7 @@ int exec_(fs_node_t *path, int argc, char **argv, int um)
 	asm volatile("mov %%cr3, %0" : "=r"(pd_addr));
 	asm volatile("mov %0, %%cr3" : : "r"(pd_addr));
 	
-	asm volatile("sti");
+	//asm volatile("sti");
 	uint entry = (uint)ehdr->e_entry;
 	
 	free(ehdr);	
@@ -87,7 +90,40 @@ int exec_(fs_node_t *path, int argc, char **argv, int um)
 		return 2;
 	}
 	if(um)
+    {
+        //Get stack pages ..
+       /* uint stack_pointer;
+        for(stack_pointer = UM_STACK_START; stack_pointer <= (UM_STACK_START + UM_STACK_SIZE); stack_pointer += 0x1000)
+            alloc_frame(get_page(stack_pointer, 1, current_directory), 0, 1);       
+        //memset((byte*)UM_STACK_START, 0, UM_STACK_SIZE + 1);
+        
+        //Copy the argument list to a usermode readable location
+        uint heap = current_thread->base.entry + current_thread->base.size + 0x100;
+        alloc_frame(get_page(heap, 1, current_directory), 0, 1);
+        char **argv_ = (char**)heap;
+        heap += sizeof(char*) * (argc + 1);
+        for(i = 0; i < argc; i++)
+        {
+            alloc_frame(get_page(heap, 1, current_directory), 0, 1);
+            argv_[i] = (char*)heap;
+            memcpy((byte*)heap, argv[i], strlen(argv[i]) * sizeof(char) + 1);
+            heap += strlen(argv[i]) + 1;
+        }
+        argv_[argc] = 0;
+            
+        uint stack = (uint)(UM_STACK_START + UM_STACK_SIZE);
+        stack -= sizeof(uint*);
+        *((uint*)stack) = (uint)argv_;
+        stack -= sizeof(int);
+        *((int*)stack) = argc;
+        stack -= sizeof(int);
+        *((int*)stack) = 0; //the return eip after a call
+        
+        set_kernel_stack(current_thread->base.stack);
+        asm volatile("mov %0, %%esp" : : "r"(stack));
+        gousermode_loc(entry);*/
 	    gousermode();
+    }
 	call_t caller = (call_t)entry;
 	if(!um)
         asm volatile("sti");

@@ -28,9 +28,9 @@ void start_multithreading(uint esp)
 	current_thread->state = STATE_RUNNABLE;
 	current_thread->pid = next_pid++;
 	current_thread->base.stack = esp;
-    current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
-    current_thread->base.kernel_stack = current_thread->esp0;
-    set_kernel_stack(current_thread->esp0);
+    //current_thread->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+    //current_thread->base.kernel_stack = current_thread->esp0;
+    //set_kernel_stack(current_thread->esp0);
 	current_thread->page_directory = current_directory;
 	current_thread->signal_queue = list_create();
 	current_thread->nodes = list_create();
@@ -44,14 +44,14 @@ thread_t *CreateThread(const char *name, uint eip, uint state)
 	thread_t *new = (thread_t*)kmalloc(sizeof(thread_t));
 	memset(new, 0, sizeof(thread_t)); 
 	
+    new->page_directory = clone_directory(current_directory);
+	
 	new->ebp = 0;
 	new->eip = eip;
 	new->base.stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->esp = new->base.stack;
-	new->base.kernel_stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
-	new->esp0 = new->base.kernel_stack;
-
-	new->page_directory = clone_directory(current_directory);
+	//new->base.kernel_stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+	//new->esp0 = new->base.kernel_stack;
 	
 	new->pid = next_pid++;
 	strcpy(new->name, name);
@@ -137,11 +137,12 @@ int fork()
 	new->pid = next_pid++;
 	new->state = STATE_RUNNABLE;
 	new->base.stack = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
-	new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
+	//new->esp0 = (uint)kmalloc(KERNEL_STACK_SIZE) + KERNEL_STACK_SIZE;
 	new->page_directory = dir;
 	new->signal_queue = list_copy(current_thread->signal_queue);
 	new->nodes = list_copy(current_thread->nodes);
 	new->parent = (thread_t*)current_thread;
+    strcpy(new->name, current_thread->name);
 
 	//Read the current intstruction pointer
 	eip = read_eip();
@@ -159,7 +160,7 @@ int fork()
 		asm volatile("mov %%ebp, %0" : "=r"(ebp));
 		//Calculate the new bp and sp
 		if(current_thread->base.stack > new->base.stack)
-		{
+		{           
 			new->esp = esp - (current_thread->base.stack - new->base.stack);
 			new->ebp = ebp - (current_thread->base.stack - new->base.stack);
 		}
@@ -172,13 +173,12 @@ int fork()
 		memcpy((byte*)(new->base.stack - KERNEL_STACK_SIZE), (byte*)(current_thread->base.stack - KERNEL_STACK_SIZE), KERNEL_STACK_SIZE);
 				
         //Systemcall?
-        if(current_thread->syscall_registers != 0)
-        {
-            uint o_stack = ((uint)current_thread->base.stack - KERNEL_STACK_SIZE);
-            uint n_stack = ((uint)new->base.stack - KERNEL_STACK_SIZE);
-            uint offset = ((uint)current_thread->syscall_registers - o_stack);
-            new->syscall_registers = (registers_t*)(n_stack + offset);
-        }
+        uint o_stack = ((uint)current_thread->base.stack - KERNEL_STACK_SIZE);
+        uint n_stack = ((uint)new->base.stack - KERNEL_STACK_SIZE);
+        uint offset = ((uint)current_thread->syscall_registers - o_stack);
+        new->syscall_registers = (registers_t*)(n_stack + offset);
+       // new->syscall_registers = (registers_t*)(new->base.stack - (current_thread->base.stack - (uint)current_thread->syscall_registers) );
+
 		//set the eip
 		new->eip = eip;
 
@@ -265,7 +265,7 @@ void free_dead_threads()
 		if(th)
 		{
 			free((void*)(th->base.stack - KERNEL_STACK_SIZE));
-			free((void*)(th->esp0 - KERNEL_STACK_SIZE));
+			//free((void*)(th->esp0 - KERNEL_STACK_SIZE));
 			free(th->page_directory);
 			
 			list_destroy(th->signal_queue);
@@ -308,6 +308,7 @@ void _switch(thread_t *new)
 {
 	uint esp, ebp, eip;	
 	asm volatile("cli"); //Just in case..
+    //kprint("%i -> %i\n", current_thread->pid, new->pid);
 	current_thread = new; //Set the appropriate var
 	current_directory = new->page_directory;
 	
@@ -316,7 +317,7 @@ void _switch(thread_t *new)
 	eip = current_thread->eip;
 	
 	//notify_event(EVENT_THREAD_SWITCH, (void*)current_thread);
-	set_kernel_stack(current_thread->esp0);
+	set_kernel_stack(esp/*current_thread->esp0*/);
 	
 	//perform the jump
 	asm volatile(

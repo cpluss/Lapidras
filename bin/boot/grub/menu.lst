@@ -2,6 +2,5 @@ default 0
 timeout 0
 
 title = Lapidras
-root (hd0,0)
 kernel /boot/kernel.bin
 module /boot/initrd
