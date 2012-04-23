@@ -34,8 +34,8 @@ typedef struct fs_node
 	attach_type_t mount_on;
 	//create_node_t create;
 	
+    struct fs_node *parent; //Parent node
 	struct fs_node *ptr; //used by mountpoints
-	
 	void *_ptr;
 } fs_node_t;
 

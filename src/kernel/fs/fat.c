@@ -250,8 +250,10 @@ static void fat16_read_name(fat16_dir_longfilename_t *ln, char *out)
 	}
 	out[j] = 0; //null terminate
 }
-static void populate_children(ata_device_t *device, fat16_entry_t *parent, uint isroot)
+static void populate_children(ata_device_t *device, fs_node_t *parent_node, uint isroot)
 {
+    fat16_entry_t *parent = (fat16_entry_t*)parent_node->_ptr;
+
 	if(parent->cluster <= 0)
 		return;
 		
@@ -293,8 +295,8 @@ static void populate_children(ata_device_t *device, fat16_entry_t *parent, uint 
 		entry->ident = ident;
 		entry->device = device;
 		entry->size = dir->size;
-		if(dir->attribute == FAT16_ATTR_DIRECTORY)
-			populate_children(device, entry, 0);
+		//if(dir->attribute == FAT16_ATTR_DIRECTORY)
+		//	populate_children(device, entry, 0);
 		
 		if(ln->type == 0 && ln->attribute == 0x0F)
 			fat16_read_name(ln, entry->filename);
@@ -314,11 +316,13 @@ static void populate_children(ata_device_t *device, fat16_entry_t *parent, uint 
 		node->readdir = &fat16_readdir;
 		node->write = &fat16_write;
 		node->read = &fat16_read;
+        node->_ptr = (void*)entry;
+        node->parent = parent_node;
 		switch(dir->attribute)
 		{
 			case FAT16_ATTR_DIRECTORY:
 				node->flags = FS_DIRECTORY;
-				populate_children(device, entry, 0);
+				populate_children(device, node, 0);
 				break;
 			case FAT16_ATTR_FILE:
 				node->flags = FS_FILE;
@@ -329,7 +333,7 @@ static void populate_children(ata_device_t *device, fat16_entry_t *parent, uint 
 		node->length = entry->size;
 		list_insert(nodes_list, (void*)node); //Insert it into the node list
 		entry->node = node; //Set the node pointer for fast retrieval
-		node->_ptr = (void*)entry;
+		//node->_ptr = (void*)entry;
 	}
 	
 	free(b);
@@ -396,19 +400,6 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 		
 		memcpy((byte*)dir, (byte*)(b + offset), sizeof(fat16_dir_t));
 		offset += sizeof(fat16_dir_t);
-		/*if(ln->attribute != 0x0F)
-		{
-			kprint("Break when dirname is '%s'(0x%x)\n", dir->filename, dir->always_zero);
-			free((void*)ln);
-			free((void*)dir);
-			break;
-		}
-		if(dir->filename[0] & 0xFFFFFF00)
-		{
-			free((void*)ln);
-			free((void*)dir);
-			continue;
-		}*/
 		if(dir->always_zero != 0)
 		{
 			free((void*)ln);
@@ -451,8 +442,6 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 		entry->cluster = dir->cluster;
 		entry->children = list_create(); //Create the list of child nodes
 		list_insert(fat16_root_entry->children, (void*)entry); //Insert into childrens
-		if(dir->attribute == FAT16_ATTR_DIRECTORY)
-			populate_children(device, entry, 0);
 		
 		fs_node_t *node = 0;
 		if(strcmp(entry->filename, "dev"))
@@ -468,10 +457,13 @@ fs_node_t *mount_fat16(ata_device_t *device, int partition)
 			//node->create = &fat16_create;
 			node->write = &fat16_write;
 			node->read = &fat16_read;
+            node->_ptr = (void*)entry;
+            node->parent = fat16_root;
 			switch(dir->attribute)
 			{
 				case FAT16_ATTR_DIRECTORY:
 					node->flags = FS_DIRECTORY;
+                    populate_children(device, node, 0);
 					break;
 				case FAT16_ATTR_FILE:
 					node->flags = FS_FILE;

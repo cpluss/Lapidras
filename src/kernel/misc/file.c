@@ -6,6 +6,7 @@ char *current_directory;
  * -> Create that later on when implementing other fs's
  * */
 fs_node_t *ramfs_root;
+fs_node_t *current_root;
 fs_node_t *current_node;
 
 //Keep track of all handles
@@ -62,17 +63,30 @@ fs_node_t *evaluate_path(char *path)
 		pch = (char*)strtok_r((char*)0, "/", &save);
 	}
 	argv[tokenid] = 0;
-	if(tokenid == 1) //Well, look inside the root directory
+	if(tokenid == 1) //Well, look inside the current directory
+    {
+        if(strcmp(argv[0], ".."))
+            return current_node->parent;
+      
 		return finddir_fs(current_node, argv[0]);
+    }
 	
 	int i;
 	fs_node_t *next_node = 0;
-	fs_node_t *cur_node = current_node;
+	fs_node_t *cur_node;
+    if(path[0] == '/')
+        cur_node = current_root;
+    else
+        cur_node = current_node;
 	for(i = 0; i < tokenid; i++)
 	{
-		fs_node_t *node = finddir_fs(cur_node, argv[i]);
+        fs_node_t *node;
+        if(strcmp(argv[i], ".."))
+            node = cur_node->parent;
+        else
+            node = finddir_fs(cur_node, argv[i]);
 		if(!node)
-			continue;
+			break;
 		
 		if(node->flags == FS_DIRECTORY)
 			cur_node = node;
@@ -85,9 +99,16 @@ fs_node_t *evaluate_path(char *path)
 	}
 	return 0;
 }
+void set_current_root(fs_node_t *root)
+{
+    current_root = root;
+}
+
 int fopen(const char *path)
 {		
 	fs_node_t *file = evaluate_path((char*)path);
+    if(!file)
+        return -1;
 	
 	if((file->flags & 0xF) == FS_DIRECTORY)
 		return -1;

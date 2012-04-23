@@ -1,130 +1,11 @@
 #include "system.h"
 #include "thread.h"
 #include "event.h"
+#include "keymap.h"
 
 extern virtual_console_t *current_visible_console;
-
-/*default keymap - dvorak*/
-byte dvorak_keymap_ascii[128] =
-{
-	0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
-	'9', '0', '-', '=', 0x08,	/* Backspace */
-	0x09,			/* Tab */
-	0, 0, 0, 'p',	/* 19 */
-	'y', 'f', 'g', 'c', 'r', 'l', ',', '*',
-	0x0D,	/* Enter key */
-	0,			/* 29   - Control */
-	'a', 'o', 'e', 'u', 'i', 'd', 'h', 't', 'n', 's',	/* 39 */
-	'-', '\'',   0x0E,		/* Left shift */
-	'\'', '.', 'q', 'j', 'k', 'x', 'b',			/* 49 */
-	'm', 'w', 'v', 'z',   0x0E,				/* Right shift */
-	'*',
-	0x0F,	/* Alt */
-	' ',	/* Space bar */
-	0x10,	/* Caps lock */
-	0xF1,	/* 59 - F1 key ... > */
-	0xF2,   0xF3,   0xF4,   0xF5,   0xF6,   0xF7,   0xF8,   0xF9,
-	0xFA,	/* < ... F10 */
-	0,	/* 69 - Num lock*/
-	0,	/* Scroll Lock */
-	0,	/* Home key */
-	0x0E,	/* Up Arrow */
-	0,	/* Page Up */
-	'-',
-	0x20,	/* Left Arrow */
-	0,
-	0x22,	/* Right Arrow */
-	'+',
-	0,	/* 79 - End key*/
-	0x24,	/* Down Arrow */
-	0,	/* Page Down */
-	0,	/* Insert Key */
-	0,	/* Delete Key */
-	0,   0,   0,
-	0,	/* F11 Key */
-	0,	/* F12 Key */
-	0,	/* All other keys are undefined */
-};
-char second_map[128] = 
-{
-		0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
-	'9', '0', '-', '=', 0x08,	/* Backspace */
-	0x09,			/* Tab */
-	'\'', '|', ':', ']',	/* 19 */
-	'$', '"', '?', '&', '<', '>', 0, 0,
-	0x0D,	/* Enter key */
-	0,			/* 29   - Control */
-	';', '/', '(', ')', '|', '#', '^', '#', '"', '~',	/* 39 */
-	'`', '*',   0x0E,		/* Left shift */
-	'\'', ':', '=', '@', '!', '\\', '%',			/* 49 */
-	'`', 0, 0, 0,   0x0E,				/* Right shift */
-	'*',
-	0x0F,	/* Alt */
-	' ',	/* Space bar */
-	0x10,	/* Caps lock */
-	0xF1,	/* 59 - F1 key ... > */
-	0xF2,   0xF3,   0xF4,   0xF5,   0xF6,   0xF7,   0xF8,   0xF9,
-	0xFA,	/* < ... F10 */
-	0,	/* 69 - Num lock*/
-	0,	/* Scroll Lock */
-	0,	/* Home key */
-	0x0E,	/* Up Arrow */
-	0,	/* Page Up */
-	'-',
-	0x20,	/* Left Arrow */
-	0,
-	0x22,	/* Right Arrow */
-	'+',
-	0,	/* 79 - End key*/
-	0x24,	/* Down Arrow */
-	0,	/* Page Down */
-	0,	/* Insert Key */
-	0,	/* Delete Key */
-	0,   0,   0,
-	0,	/* F11 Key */
-	0,	/* F12 Key */
-	0,	/* All other keys are undefined */
-};
-
-char qwerty_keymap_ascii[128] =
-{
-	0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
-	'9', '0', '-', '=', '\b',	/* Backspace */
-	'\t',			/* Tab */
-	'q', 'w', 'e', 'r',	/* 19 */
-	't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0x0d,	/* Enter key */
-	0,			/* 29   - Control */
-	'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',	/* 39 */
-	'\'', '`',   0x0E,		/* Left shift */
-	'\\', 'z', 'x', 'c', 'v', 'b', 'n',			/* 49 */
-	'm', ',', '.', '/',   0x0E,				/* Right shift */
-	'*',
-	0x0F,	/* Alt */
-	' ',	/* Space bar */
-	0,	/* Caps lock */
-	0xF1,	/* 59 - F1 key ... > */
-	0xF2,   0xF3,   0xF4,   0xF5,   0xF6,   0xF7,   0xF8,   0xF9,
-	0xFA,	/* < ... F10 */
-	0,	/* 69 - Num lock*/
-	0,	/* Scroll Lock */
-	0,	/* Home key */
-	0,	/* Up Arrow */
-	0,	/* Page Up */
-	'-',
-	0,	/* Left Arrow */
-	0,
-	0,	/* Right Arrow */
-	'+',
-	0,	/* 79 - End key*/
-	0,	/* Down Arrow */
-	0,	/* Page Down */
-	0,	/* Insert Key */
-	0,	/* Delete Key */
-	0,   0,   0,
-	0xFB,	/* F11 Key */
-	0xFC,	/* F12 Key */
-	0,	/* All other keys are undefined */
-};
+extern keymap_t dvorak_keymap, qwerty_keymap;
+keymap_t *current_keymap;
 
 typedef struct
 {
@@ -133,7 +14,6 @@ typedef struct
 	char *name;
 	thread_t *th;
 } kbd_listener_t;
-char *current_keymap;
 list_t *listeners;
 
 static void begin_listen(char *buffer)
@@ -190,7 +70,7 @@ void kbd_get_string(char *b)
 int shift, alt, ctrl;
 #define KBD_SHFT 0x100
 #define KBD_CTRL 0x200
-#define KBD_ALT  0x300
+#define KBD_ALT  0x400
 int state = 0;
 static void kbd_handler(registers_t *regs)
 {
@@ -224,14 +104,14 @@ static void kbd_handler(registers_t *regs)
 			break;
 	}
 	
-	byte c = current_keymap[scancode];
+	byte c = current_keymap->map[scancode];
 	if(scancode & 0x80)
 		return;
 	
 	if((state & KBD_SHFT) && (c > 0x60 && c < 0x7A))
-		c -= 0x20;
-	if(state & KBD_ALT)
-		c = second_map[scancode];
+		c = current_keymap->map_shft[scancode];
+	else if(state & KBD_ALT)
+		c = current_keymap->map_alt[scancode];
 	kputc_v(current_visible_console, c);
     uint p = state | c;
 	notify_event(EVENT_KBD_CHAR, (void*)&p);
@@ -272,11 +152,11 @@ static void kbd_handler(registers_t *regs)
 
 void set_dvorak()
 {
-	current_keymap = dvorak_keymap_ascii;
+	current_keymap = &dvorak_keymap;
 }
 void set_qwerty()
 {
-	current_keymap = qwerty_keymap_ascii;
+	current_keymap = &qwerty_keymap;
 }
 
 void init_kbd()

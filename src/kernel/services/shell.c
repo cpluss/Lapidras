@@ -2,8 +2,11 @@
 #include "thread.h"
 #include "fat.h"
 #include "node.h"
+
 extern fs_node_t *ramfs_root;
 extern fs_node_t *current_node;
+extern fs_node_t *current_root;
+char current_path[256];
 fs_node_t *bin;
 
 typedef void (*cmd_call_t)(int, char**);
@@ -13,7 +16,6 @@ typedef struct cmd
 	cmd_call_t handler;
 } command_t;
 list_t *avail_commands;
-extern fs_node_t *evaluate_path(char *path);
 
 static void shell_proc(int argc, char **argv)
 {
@@ -75,7 +77,7 @@ static void shell_ls(int argc, char **arg)
     int listed_detail = 0;
 	if(argc >= 2)
 	{ 
-		char *path = arg[1];
+		/*char *path = arg[1];
 		if(strcmp(path, "-l"))
         {
             path = arg[2];
@@ -116,8 +118,8 @@ static void shell_ls(int argc, char **arg)
 					break;
 				}
 			}
-		}
-		
+		}*/
+		directory = evaluate_path(arg[1]);
 		if(!directory)
 		{
 			kprint("Could not find %s\n", arg[1]);
@@ -147,6 +149,49 @@ static void shell_ls(int argc, char **arg)
 	
 	kputc('\n');
 }
+static void shell_cd(int argc, char **argv)
+{
+    if(argc != 2)
+    {
+        kprint("Usage: cd <directory path>\n");
+        return;
+    }
+    
+    fs_node_t *dir = evaluate_path(argv[1]);
+    if(!dir || dir->flags != FS_DIRECTORY)
+    {
+        if(strcmp(argv[1], "..") && current_node->parent == 0)
+        {
+            kprint("You are in the root directory, dumb .. \n");
+            return;
+        }
+        kprint("Could not find directory %s\n", argv[1]);
+        return;
+    }
+    
+    current_node = dir;
+    //The hard part -> The path .. showing the user where the heck
+    //he/she is located ..
+    if(argv[1][0] == '/') //easy, just replace it
+        strcpy(current_path, argv[1]);
+    else if(strcmp(argv[1], "..")) //now just erase ..
+    {
+        int pos = 0, i;
+        for(i = 0; i < strlen(current_path); i++)
+            if(current_path[i] == '/')
+                pos = i;
+
+        memset((byte*)((uint)current_path + pos), 0, 255 - strlen(current_path) - 10);
+        if(strcmp(current_path, ""))
+            strcpy(current_path, "/");
+    }
+    else //append
+    {
+        if(!strcmp(current_path, "/"))
+            strapp(current_path, "/");
+        strapp(current_path, argv[1]);
+    }
+}
 static void shell_mem(int argc, char **argv)
 {
 	if(argc <= 1)
@@ -165,13 +210,6 @@ static void shell_clean(int argc, char **argv)
 
 static void shell_test(int argc, char **argv)
 {
-    int ret = fork();
-    if(ret  == 0)
-    {
-        kprint("Got a child here!\n");
-        exit();
-    }
-    kprint("I may be thy parent!\n");
 }
 
 int shell_find(int argc, char **argv)
@@ -206,6 +244,7 @@ void shell_init()
 	register_command("clear", &shell_clear);
 	register_command("dir", &shell_dir);
 	register_command("ls", &shell_ls);
+    register_command("cd", &shell_cd);
     register_command("mem", &shell_mem);
     register_command("clear", &shell_clean);
     register_command("test", &shell_test);
@@ -213,15 +252,12 @@ void shell_init()
 void shell()
 {
 	shell_init(bin);
+    strcpy(current_path, "/");
 	
-	char *cmd = (char*)alloc(128);
-	char *working_directory = (char*)alloc(64);
-	memset(working_directory, 0, 64);
-	working_directory = "/";
-	
+	char *cmd = (char*)alloc(512);	
 	for(;;)
 	{
-		kprint("/> ", current_node->name);
+		kprint("%s> ", current_path);
 		memset(cmd, 0, 128);
 		kbd_get_string(cmd);
 		

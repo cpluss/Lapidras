@@ -29,12 +29,10 @@
  //void mount_fat16(fs_node_t *root);
  //void mount_ext2(fs_node_t *root);
  void mount_fs(int type, fs_node_t *root);
- 
  int ftell_size(int handle);
- 
- //To set the current working directory, or get
- void set_current_directory(const char *path);
- char *get_current_directory();
+
+ fs_node_t *evaluate_path(char *path);
+ void set_currenT_root(fs_node_t *root);
  
  //Read file
  int fread(byte *buffer, uint size, uint n, int handle);

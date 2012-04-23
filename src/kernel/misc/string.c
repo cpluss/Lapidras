@@ -41,12 +41,18 @@ int strcmp(char *s1, char *s2)
 
 void strapp(char *dest, char *add)
 {
-	int i = strlen(dest);
+    char *dst = (char*)((uint)dest + strlen(dest) - 1);
+    do
+    {
+        *dst++ = *add++;
+    }while(*add);
+    *dst++ = 0x00;
+	/*int i = strlen(dest);
 	do
 	{
 		dest[i] = *add;
 		i++;
-	}while(*add++);
+	}while(*add++);*/
 }
 void strapp_c(char *dest, char add)
 {

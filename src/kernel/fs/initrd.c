@@ -143,6 +143,7 @@ fs_node_t *init_initrd(uint location)
 	initrd_root->close = 0;
 	initrd_root->readdir = &initrd_readdir;
 	initrd_root->finddir = &initrd_finddir;
+    initrd_root->parent = 0;
 	initrd_root->ptr = 0;
 	initrd_root->impl = 0;
 	
@@ -157,6 +158,7 @@ fs_node_t *init_initrd(uint location)
 	initrd_dev->close = 0;
 	initrd_dev->readdir = &initrd_readdir;
 	initrd_dev->finddir = &initrd_finddir;
+    initrd_dev->parent = initrd_root;
 	initrd_dev->ptr = 0;
 	initrd_dev->mount_on = &initrd_mounton;
 	initrd_dev->impl = 0; 
@@ -185,6 +187,9 @@ fs_node_t *init_initrd(uint location)
 		root_nodes[j].open = 0;
 		root_nodes[j].close = 0;
 		root_nodes[j].impl = 0;
+        root_nodes[j].ptr = 0;
+        root_nodes[j].mount_on = 0;
+        root_nodes[j].parent = initrd_root;
         j++;
 	}
 	

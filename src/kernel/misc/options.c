@@ -78,7 +78,8 @@ static int set_boot_device(char *val)
         //mounton_fs(dev, tmp); //Mount the fat16 node on dev - using MOUNTPOINT
         set_root_fs(tmp); //Set the new root directory
         bin = finddir_fs(tmp, "bin");
-        current_node = tmp; //Set the current root directory 
+        current_node = tmp; //Set the current root directory
+        set_current_root(tmp);
     }
     else if(strcmp(id, "mm")) //We use a HDD image as boot device
     {
@@ -116,11 +117,13 @@ static int set_boot_device(char *val)
         //Set the current directory as well as the bin directory
         bin = finddir_fs(tmp, "bin");
         current_node = ramfs_root;//tmp; //Current directory*/
+        set_current_root(tmp);
     }
     else if(strcmp(id, "nn")) //none
     {
         //set the current node as the ramfs root
         current_node = ramfs_root;
+        set_current_root(ramfs_root);
         bin = 0;
     }
     else
