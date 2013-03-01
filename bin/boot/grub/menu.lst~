@@ -1,9 +1,0 @@
-default 0
-
-title = Lapidras
-root (hd0,0)
-kernel /boot/kernel.bin
-
-title = TestOS - VS10
-root (hd0,0)
-kernel /Kernel.exe

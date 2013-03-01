@@ -24,5 +24,10 @@ SECTIONS{
         *(.bss)
         ebss = .;
     }
+    
+    .entryother : {
+		*(.entryother)
+	}
+    
     end = .; _end = .; __end = .;
 }

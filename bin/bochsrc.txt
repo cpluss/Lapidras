@@ -1,7 +1,7 @@
 megs: 64
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0
-ata0-master: type=disk, path=/dev/loop1, cylinders=372, heads=11, spt=8
+ata0-master: type=disk, path=bin/hdd.img, cylinders=372, heads=11, spt=8
 boot: disk
-
 clock: sync=realtime
-cpu: count=1, ips=10000000
+cpu: count=2, ips=10000000
+
